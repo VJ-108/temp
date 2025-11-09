@@ -1,0 +1,12 @@
+{
+  "68d382ffbfb3911d26c6d50c": {
+    "portRange": [
+      4000,
+      4009
+    ],
+    "mappings": {},
+    "activePorts": [],
+    "containerName": "user_68d382ffbfb3911d26c6d50c",
+    "userDir": "C:\\Users\\Vaibhav\\workspace\\DevForge-Minor-Project-\\Server-Backend\\tmp\\user_68d382ffbfb3911d26c6d50c"
+  }
+}

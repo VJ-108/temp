@@ -1,0 +1,22 @@
+{
+	"watch": [
+		"index.js",
+		"dockerManager.js",
+		"terminalManager.js",
+		"fileManager.js",
+		"portManager.js",
+		"projectManager.js",
+		"routes/",
+		"utils.js",
+		"app.js",
+		"controllers/",
+		"middlewares/",
+		"models/",
+		"config/",
+		"utils/",
+		"db.js",
+		"socket.js"
+	],
+	"ignore": ["tmp/*", "node_modules/*", "userPorts.json", "*.log"],
+	"ext": "js,json"
+}
