@@ -4,12 +4,16 @@ import { execSync } from "child_process";
 import path from "path";
 import { isInsideDirectory } from "./utils.js";
 
-
 export function generateFileTree(containerName) {
 	try {
 		const output = execSync(
 			`docker exec ${containerName} sh -c "find /workspace -printf '%y %p\\n' 2>/dev/null || echo ''"`,
-			{ encoding: "utf8", timeout: 5000 }
+			{
+				encoding: "utf8",
+				timeout: 10000, // 10 second timeout
+				windowsHide: true, // Hide window on Windows
+				maxBuffer: 1024 * 1024 * 10, // 10MB buffer
+			}
 		);
 
 		const lines = output
@@ -52,10 +56,17 @@ export function generateFileTree(containerName) {
 
 		return tree;
 	} catch (error) {
-		console.error(
-			`❌ Error generating file tree for ${containerName}:`,
-			error.message
-		);
+		// Check if it's a timeout error
+		if (error.code === "ETIMEDOUT") {
+			console.error(
+				`⚠️  File tree generation timeout for ${containerName}. Container may be slow to respond.`
+			);
+		} else {
+			console.error(
+				`❌ Error generating file tree for ${containerName}:`,
+				error.message
+			);
+		}
 		return {};
 	}
 }
@@ -63,10 +74,7 @@ export function generateFileTree(containerName) {
 export function handleCommand(containerName, command, socket) {
 	if (!command.trim()) return;
 
-	// console.log("📝 Command executed:", command);
-
 	const firstWord = command.split(" ")[0];
-	// console.log("💻 Full command received:", command);
 	if (["touch", "mkdir", "rm", "mv", "cp"].includes(firstWord)) {
 		setTimeout(() => {
 			try {
@@ -100,7 +108,7 @@ export async function changeFile(
 export function setupFileRoutes(app, users, io) {
 	// GET file content
 	app.get("/files/content", async (req, res) => {
-		const { userId,socketId } = req.query;
+		const { userId, socketId } = req.query;
 		let { path: filePath } = req.query;
 
 		console.log(`📄 Fetching file content for user ${userId}: ${filePath}`);
@@ -182,7 +190,7 @@ export function setupFileRoutes(app, users, io) {
 
 	// RENAME file/folder
 	app.post("/files/rename", async (req, res) => {
-		const { userId, oldPath, newPath,socketId } = req.body;
+		const { userId, oldPath, newPath, socketId } = req.body;
 		if (!userId || !oldPath || !newPath || !users[socketId])
 			return res.status(400).json({ error: "Invalid request" });
 
@@ -204,5 +212,6 @@ export function setupFileRoutes(app, users, io) {
 }
 
 export function refreshFileTree(containerName, socket) {
-	socket.emit("file:refresh", generateFileTree(containerName));
+	const tree = generateFileTree(containerName);
+	socket.emit("file:refresh", tree);
 }

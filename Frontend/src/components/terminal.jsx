@@ -32,6 +32,11 @@ const Terminal = ({ userId }) => {
 			// Wait for socket to connect
 			const handleConnect = () => {
 				console.log("✅ Terminal: Socket connected, initializing...");
+				if (terminalInstances.current.size > 0) {
+					console.log("⚠️ Terminals already initialized — skipping re-init");
+					return;
+				}
+
 				initializeTerminals();
 			};
 
@@ -111,9 +116,23 @@ const Terminal = ({ userId }) => {
 			};
 		}
 
-		// Return cleanup from outer useEffect
+		// Proper cleanup for all socket listeners and terminals
 		return () => {
-			// Cleanup will be handled by inner function's return
+			const socket = socketRef.current;
+			if (socket) {
+				socket.off("terminal:data");
+				socket.off("terminal:created");
+				socket.off("terminal:closed");
+				socket.off("terminal:error");
+				socket.off("terminal:list");
+			}
+
+			terminalInstances.current.forEach(({ term }) => {
+				try {
+					term.dispose();
+				} catch {}
+			});
+			terminalInstances.current.clear();
 		};
 	}, [userId]);
 

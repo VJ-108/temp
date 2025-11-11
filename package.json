@@ -1,0 +1,14 @@
+{
+  "name": "my-fullstack-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:server\"",
+    "dev:frontend": "cd Frontend && npm run dev",
+    "dev:server": "cd Server-Backend && npm run dev",
+    "dev:ml": "cd ml && python phi3_server.py"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

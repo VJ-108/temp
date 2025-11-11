@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from llama_cpp import Llama
+# from llama_cpp import Llama
 import httpx
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -21,7 +21,7 @@ CONTEXT_SIZE = 4096
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "phi3:mini"
-DEFAULT_MODEL = "llama-cpp"
+DEFAULT_MODEL = "ollama"
 
 # Storage
 conversation_history: Dict[str, List[Dict]] = {}
