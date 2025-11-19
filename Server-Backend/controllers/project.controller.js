@@ -22,17 +22,29 @@ const getProjectById = async (req, res) => {
 
 const createProject = async (req, res) => {
 	try {
-		const { title, description, difficulty, techStack, templateRepo } =
-			req.body;
+		const {
+			title,
+			description,
+			difficulty,
+			techStack,
+			templateRepo,
+			learningObjectives, // NEW
+			tasks, // NEW
+		} = req.body;
+
 		const project = await Project.create({
 			title,
 			description,
 			difficulty,
 			techStack,
 			templateRepo,
+			learningObjectives: learningObjectives || [], // NEW
+			tasks: tasks || [], // NEW
 		});
+
 		res.status(201).json(project);
 	} catch (err) {
+		console.error("Error creating project:", err);
 		res.status(500).json({ message: "Error creating project" });
 	}
 };
@@ -40,15 +52,36 @@ const createProject = async (req, res) => {
 
 const updateProject = async (req, res) => {
 	try {
+		const {
+			title,
+			description,
+			difficulty,
+			techStack,
+			templateRepo,
+			learningObjectives, // NEW
+			tasks, // NEW
+		} = req.body;
+
 		const updatedProject = await Project.findByIdAndUpdate(
 			req.params.id,
-			req.body,
+			{
+				title,
+				description,
+				difficulty,
+				techStack,
+				templateRepo,
+				learningObjectives, // NEW
+				tasks, // NEW
+			},
 			{ new: true }
 		);
+
 		if (!updatedProject)
 			return res.status(404).json({ message: "Project not found" });
+
 		res.status(200).json(updatedProject);
 	} catch (err) {
+		console.error("Error updating project:", err);
 		res.status(500).json({ message: "Error updating project" });
 	}
 };

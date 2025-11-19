@@ -11,9 +11,84 @@ import {
 	Pie,
 	Cell,
 	Legend,
+	RadarChart,
+	PolarGrid,
+	PolarAngleAxis,
+	PolarRadiusAxis,
+	Radar,
 } from "recharts";
 import { useAuth } from "@/context/AuthContext";
 import { API_BASE_URL } from "@/utils/constants";
+import { Trophy, Target, Award, TrendingUp } from "lucide-react";
+
+const ConceptsSection = ({ projects }) => {
+	const [conceptsData, setConceptsData] = useState([]);
+
+	useEffect(() => {
+		// Aggregate concepts from all projects
+		const conceptMap = {};
+
+		projects.forEach((proj) => {
+			if (proj.conceptsLearned && Array.isArray(proj.conceptsLearned)) {
+				proj.conceptsLearned.forEach((concept) => {
+					conceptMap[concept] = (conceptMap[concept] || 0) + 1;
+				});
+			}
+		});
+
+		const data = Object.entries(conceptMap).map(([concept, count]) => ({
+			concept,
+			count,
+		}));
+
+		setConceptsData(data);
+	}, [projects]);
+
+	if (conceptsData.length === 0) return null;
+
+	return (
+		<div className="mb-10">
+			<h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+				<Target className="text-cyan-400" size={24} />
+				<span className="bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
+					Concepts Mastered
+				</span>
+			</h2>
+
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+				{conceptsData.map((item, idx) => (
+					<div
+						key={idx}
+						className="bg-[#111827] border border-[#374151] rounded-lg p-4 hover:shadow-cyan-500/20 transition"
+					>
+						<div className="flex items-center justify-between mb-2">
+							<div className="flex items-center gap-2">
+								<Award size={16} className="text-yellow-400" />
+								<h3 className="text-sm font-semibold text-white">
+									{item.concept}
+								</h3>
+							</div>
+							<span className="text-xs bg-cyan-500/20 text-cyan-400 px-2 py-1 rounded-full">
+								{item.count} project{item.count > 1 ? "s" : ""}
+							</span>
+						</div>
+						<div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+							<div
+								className="bg-gradient-to-r from-cyan-400 to-purple-500 h-full transition-all duration-500"
+								style={{
+									width: `${Math.min(
+										(item.count / projects.length) * 100,
+										100
+									)}%`,
+								}}
+							/>
+						</div>
+					</div>
+				))}
+			</div>
+		</div>
+	);
+};
 
 const Dashboard = () => {
 	const { user, loading: authLoading } = useAuth();
@@ -186,14 +261,18 @@ const Dashboard = () => {
 				</div>
 			</div>
 
+			<ConceptsSection projects={projects} />
+
 			{/* Project table */}
 			<div className="overflow-x-auto mb-10">
 				<table className="table w-full bg-[#111827] border border-[#374151] shadow-xl rounded-lg">
-					<thead className="bg-gradient-to-r from-cyan-900 via-indigo-700 to-pink-900 ">
+					<thead className="bg-gradient-to-r from-cyan-900 via-indigo-700 to-pink-900">
 						<tr className="text-cyan-300">
 							<th>S.No</th>
 							<th>Project Name</th>
 							<th>Difficulty</th>
+							<th>Tasks Progress</th>
+							<th>Concepts</th>
 							<th>Status</th>
 						</tr>
 					</thead>
@@ -201,7 +280,17 @@ const Dashboard = () => {
 						{projects.map((proj, idx) => (
 							<tr key={proj._id} className="hover:bg-[#1f2937]/50">
 								<td>{idx + 1}</td>
-								<td>{proj.project.title}</td>
+								<td>
+									<div className="flex items-center gap-2">
+										<span>{proj.project.title}</span>
+										{proj.status === "completed" && (
+											<span className="inline-flex items-center gap-1 px-2 py-1 bg-[#1e3a1e] border border-[#2d5a2d] rounded text-[10px] text-[#4caf50]">
+												<Trophy size={10} />
+												Done
+											</span>
+										)}
+									</div>
+								</td>
 								<td>
 									<span
 										className={`px-3 py-1 rounded-full text-sm font-semibold ${
@@ -215,7 +304,45 @@ const Dashboard = () => {
 										{proj.project.difficulty}
 									</span>
 								</td>
-								<td>{proj.status}</td>
+								<td>
+									<div className="flex flex-col gap-1">
+										<span className="text-xs text-gray-400">
+											{proj.completedTasks?.length || 0}/
+											{proj.project.tasks?.length || 8} tasks
+										</span>
+										<div className="w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
+											<div
+												className="bg-cyan-500 h-full transition-all"
+												style={{
+													width: `${
+														((proj.completedTasks?.length || 0) /
+															(proj.project.tasks?.length || 1)) *
+														100
+													}%`,
+												}}
+											/>
+										</div>
+									</div>
+								</td>
+								<td>
+									<span className="text-sm text-purple-400">
+										{proj.conceptsLearned?.length || 0} learned
+									</span>
+								</td>
+								<td>
+									<div className="flex items-center gap-2">
+										<span
+											className="w-2 h-2 rounded-full"
+											style={{
+												backgroundColor:
+													proj.status === "completed" ? "#4caf50" : "#ff9800",
+											}}
+										></span>
+										<span style={{ textTransform: "capitalize" }}>
+											{proj.status}
+										</span>
+									</div>
+								</td>
 							</tr>
 						))}
 					</tbody>

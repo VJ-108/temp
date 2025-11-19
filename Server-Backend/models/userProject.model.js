@@ -1,3 +1,4 @@
+// Server-Backend/models/userProject.model.js
 import mongoose from "mongoose";
 
 const userProjectSchema = new mongoose.Schema(
@@ -18,6 +19,26 @@ const userProjectSchema = new mongoose.Schema(
 			type: String,
 			enum: ["in-progress", "completed"],
 			default: "in-progress",
+		},
+
+		// NEW: Track which tasks are completed
+		completedTasks: [
+			{
+				type: Number, // Task ID
+			}
+		],
+
+		// NEW: Track concepts learned
+		conceptsLearned: [
+			{
+				type: String, // Concept name
+			}
+		],
+
+		// NEW: Track current active task
+		currentTask: {
+			type: Number,
+			default: 1,
 		},
 
 		codeHistory: [
@@ -55,5 +76,7 @@ const userProjectSchema = new mongoose.Schema(
 	},
 	{ timestamps: true }
 );
+
+userProjectSchema.index({ user: 1, project: 1 }, { unique: true });
 
 export const UserProject = mongoose.model("UserProject", userProjectSchema);

@@ -41,6 +41,7 @@ const Navbar = () => {
       await logout(); // call from AuthContext
       setShowLogoutModal(false);
       setDropdownOpen(false);
+      navigate("/", { replace: true });
     } catch (err) {
       console.error("Logout failed:", err);
     }

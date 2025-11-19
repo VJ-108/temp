@@ -7,6 +7,7 @@ import { toast } from "react-hot-toast";
 const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
   const { setUser, user } = useAuth();
   const statusRef = useRef(null);
@@ -25,7 +26,8 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/user/login`, {
+      const endpoint = isAdmin ? "/admin/login" : "/user/login";
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -37,7 +39,7 @@ const Login = () => {
       if (res.ok) {
         toast.success("🎉 Login successful!");
         setUser(data.user);
-        setTimeout(() => navigate("/"), 1000); // Redirect after delay
+        setTimeout(() => navigate("/"), 1000);
       } else {
         toast.error(data.message || "Invalid credentials.");
       }
@@ -54,16 +56,50 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0A0F1C] px-4 py-24">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#050B1A] via-[#0A0F1C] to-[#111827] px-4 py-24">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md bg-[#111827] border border-[#374151] shadow-2xl rounded-2xl p-6 sm:p-8 text-gray-100"
+        className="w-full max-w-md bg-[#0D1528]/80 backdrop-blur-xl border border-[#24324B] shadow-[0_0_40px_rgba(0,255,255,0.1)] rounded-3xl p-6 sm:p-8 text-gray-100 transition-transform duration-500 hover:scale-[1.02]"
         aria-describedby="statusMessage"
       >
-        <h2 className="text-3xl font-bold mb-6 text-center text-cyan-400">
+        {/* --- GLOWING TAB SWITCH --- */}
+        <div className="relative mb-8 bg-[#0B1222] rounded-2xl border border-[#1E2A3E] flex overflow-hidden shadow-[inset_0_0_10px_rgba(0,255,255,0.1)]">
+          <button
+            type="button"
+            onClick={() => setIsAdmin(false)}
+            className={`w-1/2 py-3 text-center font-semibold text-sm sm:text-base transition-all duration-300 relative ${
+              !isAdmin
+                ? "text-black bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_20px_rgba(0,255,255,0.6)] z-10"
+                : "text-gray-400 hover:text-cyan-300"
+            }`}
+          >
+            User Login
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsAdmin(true)}
+            className={`w-1/2 py-3 text-center font-semibold text-sm sm:text-base transition-all duration-300 relative ${
+              isAdmin
+                ? "text-black bg-gradient-to-r from-purple-500 to-pink-500 shadow-[0_0_20px_rgba(255,0,255,0.6)] z-10"
+                : "text-gray-400 hover:text-pink-300"
+            }`}
+          >
+            Admin Login
+          </button>
+
+          {/* Animated glowing line under active tab */}
+          <div
+            className={`absolute bottom-0 left-0 w-1/2 h-[3px] rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500 ${
+              isAdmin ? "translate-x-full from-purple-500 to-pink-500" : ""
+            }`}
+          ></div>
+        </div>
+
+        <h2 className="text-3xl font-bold mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-500 drop-shadow-[0_0_10px_rgba(0,255,255,0.3)]">
           Welcome Back 👋
         </h2>
 
+        {/* --- EMAIL INPUT --- */}
         <div className="mb-4">
           <label htmlFor="email" className="block text-sm text-gray-400 mb-2">
             Email
@@ -76,12 +112,13 @@ const Login = () => {
             onChange={handleChange}
             placeholder="Enter your email"
             autoComplete="email"
-            className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-cyan-400 outline-none"
+            className="w-full px-4 py-3 rounded-xl bg-[#0B1220] border border-gray-700 text-gray-100 focus:ring-2 focus:ring-cyan-400 outline-none placeholder-gray-500 transition-all duration-200 hover:border-cyan-400"
             required
             autoFocus
           />
         </div>
 
+        {/* --- PASSWORD INPUT --- */}
         <div className="mb-6">
           <label htmlFor="password" className="block text-sm text-gray-400 mb-2">
             Password
@@ -94,24 +131,32 @@ const Login = () => {
             onChange={handleChange}
             placeholder="Enter your password"
             autoComplete="current-password"
-            className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-cyan-400 outline-none"
+            className="w-full px-4 py-3 rounded-xl bg-[#0B1220] border border-gray-700 text-gray-100 focus:ring-2 focus:ring-cyan-400 outline-none placeholder-gray-500 transition-all duration-200 hover:border-cyan-400"
             required
           />
         </div>
 
+        {/* --- LOGIN BUTTON --- */}
         <button
           type="submit"
           disabled={loading}
-          className={`w-full py-3 rounded-xl font-semibold text-lg shadow-md transition flex items-center justify-center ${
+          className={`w-full py-3 rounded-xl font-semibold text-lg shadow-md transition-all duration-300 flex items-center justify-center ${
             loading
-              ? "bg-cyan-300 text-black cursor-not-allowed"
-              : "bg-cyan-500 hover:bg-cyan-600 text-black"
+              ? "bg-gradient-to-r from-cyan-300 to-blue-300 text-black cursor-not-allowed"
+              : isAdmin
+              ? "bg-gradient-to-r from-purple-500 to-pink-500 hover:shadow-[0_0_25px_rgba(255,0,255,0.5)] text-white"
+              : "bg-gradient-to-r from-cyan-400 to-blue-500 hover:shadow-[0_0_25px_rgba(0,255,255,0.5)] text-black"
           }`}
         >
-          {loading ? "Logging in..." : "Login"}
+          {loading
+            ? isAdmin
+              ? "Logging in as Admin..."
+              : "Logging in..."
+            : isAdmin
+            ? "Admin Login"
+            : "Login"}
         </button>
 
-        {/* Screen reader live region */}
         <p
           id="statusMessage"
           ref={statusRef}
@@ -121,6 +166,7 @@ const Login = () => {
           {loading ? "Logging in..." : ""}
         </p>
 
+        {/* --- SIGNUP LINK --- */}
         <p className="mt-6 text-center text-sm text-gray-400">
           Don't have an account?{" "}
           <Link to="/signup" className="text-cyan-400 hover:underline">
@@ -128,26 +174,21 @@ const Login = () => {
           </Link>
         </p>
 
-        <p className="mt-6 text-center text-sm text-gray-400">
-          Have admin account?{" "}
-          <Link to="/adminlogin" className="text-cyan-400 hover:underline">
-            Admin Login
-          </Link>
-        </p>
-
+        {/* --- DIVIDER --- */}
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-700"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="bg-[#111827] px-2 text-gray-400">OR</span>
+            <span className="bg-[#0D1528] px-2 text-gray-400">OR</span>
           </div>
         </div>
 
+        {/* --- GOOGLE LOGIN BUTTON --- */}
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="w-full py-3 bg-white hover:bg-gray-100 text-black rounded-xl font-semibold text-lg shadow-md transition flex items-center justify-center gap-2"
+          className="w-full py-3 bg-white hover:bg-gray-100 text-black rounded-xl font-semibold text-lg shadow-md transition-all duration-300 flex items-center justify-center gap-2 hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
         >
           <svg
             className="w-5 h-5"

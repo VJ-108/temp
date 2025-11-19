@@ -8,6 +8,8 @@ import * as terminalManager from "./terminalManager.js";
 import * as fileManager from "./fileManager.js";
 import * as portManager from "./portManager.js";
 import { verifySocketJWT } from "./middlewares/auth.middleware.js";
+import { trackFileChange, trackTerminalOutput } from "./contextManager.js";
+import { UserProject } from "./models/userProject.model.js";
 
 export default function setupSocketServer(server, app) {
 	const io = new SocketServer(server, {
@@ -151,6 +153,19 @@ export default function setupSocketServer(server, app) {
 			});
 
 			socket.on("file:change", (data) => {
+				const { path, content } = data;
+				const userInfo = users[socketId];
+
+				if (userInfo && userInfo.currentProjectId) {
+					// Track in context manager
+					trackFileChange(
+						dbUserId,
+						userInfo.currentProjectId,
+						path,
+						content,
+						userDir
+					).catch((err) => console.error("Error tracking file change:", err));
+				}
 				fileManager.changeFile(userDir, containerName, data, socket);
 			});
 
@@ -200,6 +215,66 @@ export default function setupSocketServer(server, app) {
 				data: `\r\n❌ Error: ${error.message}\r\n`,
 			});
 		}
+
+		socket.on(
+			"terminal:data",
+			({ terminalId, data }) => {
+				const userInfo = users[socketId];
+
+				if (userInfo && userInfo.currentProjectId) {
+					// Detect error type
+					let outputType = "info";
+					const lowerData = data.toLowerCase();
+
+					if (lowerData.includes("error") || lowerData.includes("exception")) {
+						outputType = "error";
+					} else if (lowerData.includes("warning")) {
+						outputType = "warning";
+					} else if (lowerData.includes("success") || lowerData.includes("✓")) {
+						outputType = "success";
+					}
+
+					// Track in context manager
+					trackTerminalOutput(
+						dbUserId,
+						userInfo.currentProjectId,
+						data,
+						outputType
+					);
+				}
+			}
+		);
+
+		// Store current project ID when user enters editor
+		socket.on("project:set", async ({ projectId }) => {
+			if (users[socketId]) {
+				users[socketId].currentProjectId = projectId;
+
+				// Auto-create UserProject if it doesn't exist
+				try {
+					let userProject = await UserProject.findOne({
+						user: dbUserId,
+						project: projectId,
+					});
+
+					if (!userProject) {
+						userProject = await UserProject.create({
+							user: dbUserId,
+							project: projectId,
+							status: "in-progress",
+							startedAt: new Date(),
+						});
+						console.log(
+							`✅ Auto-created UserProject for user ${dbUserId}, project ${projectId}`
+						);
+					}
+				} catch (error) {
+					console.error("Error auto-creating UserProject:", error);
+				}
+
+				console.log(`✅ Set project ${projectId} for user ${dbUserId}`);
+			}
+		});
 
 		// Disconnect handler
 		socket.on("disconnect", () => {

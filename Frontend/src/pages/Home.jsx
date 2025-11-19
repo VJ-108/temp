@@ -112,8 +112,8 @@ const Home = () => {
         </h2>
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto px-6">
           {[
-            { title: "AI Healthcare Chatbot", img: AI },
-            { title: "Smart Notes App", img: Smart },
+            { title: "Real-time chat applications", img: AI },
+            { title: "Social media platforms", img: Smart },
             { title: "E-commerce Website", img: web  },
           ].map((p) => (
             <div

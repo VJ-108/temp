@@ -27,8 +27,14 @@ const getUserProjectById = async (req, res) => {
 
 const createUserProject = async (req, res) => {
 	try {
-        const { project, status } = req.body;
-        const user = req.user.id;
+		const { project, status } = req.body;
+		const user = req.user.id;
+		const exists = await UserProject.findOne({ user, project });
+		if (exists) {
+			return res
+				.status(400)
+				.json({ message: "Project already exists for this user" });
+		}
 		const newProject = await UserProject.create({ user, project, status });
 		res.status(201).json(newProject);
 	} catch (error) {
@@ -38,15 +44,32 @@ const createUserProject = async (req, res) => {
 
 const updateUserProject = async (req, res) => {
 	try {
+		// Get the project first to verify ownership
+		const project = await UserProject.findById(req.params.id);
+
+		if (!project) {
+			return res.status(404).json({ message: "Project not found" });
+		}
+
+		// Verify the user owns this project
+		if (project.user.toString() !== req.user.id) {
+			return res.status(403).json({ message: "Unauthorized" });
+		}
+
+		// Update the project
 		const updatedProject = await UserProject.findByIdAndUpdate(
 			req.params.id,
-			req.body,
+			{
+				...req.body,
+				...(req.body.status === "completed" && { completedAt: new Date() }),
+				...(req.body.status === "in-progress" && { completedAt: null }),
+			},
 			{ new: true }
-		);
-		if (!updatedProject)
-			return res.status(404).json({ message: "Project not found" });
+		).populate("project", "title description difficulty techStack");
+
 		res.status(200).json(updatedProject);
 	} catch (error) {
+		console.error("Error updating user project:", error);
 		res.status(500).json({ message: "Error updating user project" });
 	}
 };

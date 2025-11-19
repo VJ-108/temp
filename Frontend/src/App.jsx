@@ -7,7 +7,6 @@ import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import About from "./pages/About";
 import Project from "./pages/Project";
-import EditorPage from "./pages/EditorPage";
 import Profile from "./pages/Profile";
 import AdminLogin from "./pages/AdminLogin";
 import AdminSignUp from "./pages/AdminSignUp";
@@ -45,7 +44,7 @@ function App() {
 				<Route path="/adminlogin" element={<div><AdminLogin /></div>} />
 				<Route path="/adminsignup" element={<div><AdminSignUp/></div>} />
 				{/* <Route path="/editor/:projectId" element={<EditorPage />} /> */}
-				<Route path="/editor" element={<Editor />} />
+				<Route path="/editor/:projectId/:title" element={<Editor />} />
 			</Routes>
 		</>
 	);

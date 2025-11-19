@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Terminal from "../components/terminal";
 import FileTree from "../components/FileTree";
 import PortDisplay from "../components/PortDisplay";
 import AIAssistant from "../components/AIAssistant";
 import AceEditor from "react-ace";
 import { getFileMode } from "../utils/getFileMode";
-import { Save, FileCode, Menu, Bot } from "lucide-react";
+import { Save, FileCode, Menu, Bot, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { connectSocket, getSocket, disconnectSocket } from "../socket";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import ProjectCompletionButton from "../components/ProjectCompletionButton";
+import { API_BASE_URL } from "@/utils/constants";
+import TaskPanel from "../components/TaskPanel";
 
 import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/mode-python";
@@ -31,11 +34,41 @@ function Editor() {
 	const [error, setError] = useState("");
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [aiPanelOpen, setAiPanelOpen] = useState(true);
-	const [terminalHeight, setTerminalHeight] = useState(300);
+	const [terminalHeight, setTerminalHeight] = useState(250);
 	const [isResizing, setIsResizing] = useState(false);
 	const [socketConnected, setSocketConnected] = useState(false);
+	const [currentProjectId, setCurrentProjectId] = useState(null);
+	const { projectId } = useParams();
+	const [userProjectId, setUserProjectId] = useState(null);
+	const [projectStatus, setProjectStatus] = useState("in-progress");
+	const [currentTask, setCurrentTask] = useState(null); // Track current task
 
 	const isSaved = selectedFileContent === code;
+
+	// 🔧 Scroll Fix: Freeze scroll during layout mount
+	useEffect(() => {
+		if ("scrollRestoration" in window.history) {
+			window.history.scrollRestoration = "manual";
+		}
+
+		// Instantly scroll top and lock
+		window.scrollTo({ top: 0, behavior: "auto" });
+		document.body.style.overflow = "hidden";
+
+		// Wait until editor + terminal mount fully
+		const timer = setTimeout(() => {
+			window.scrollTo({ top: 0, behavior: "auto" });
+			document.body.style.overflow = "auto"; // re-enable scrolling
+		}, 600); // wait for layout reflow & xterm fit
+
+		return () => {
+			clearTimeout(timer);
+			if ("scrollRestoration" in window.history) {
+				window.history.scrollRestoration = "auto";
+			}
+			document.body.style.overflow = "auto";
+		};
+	}, []);
 
 	// Redirect to login if not authenticated
 	useEffect(() => {
@@ -44,6 +77,67 @@ function Editor() {
 			navigate("/login");
 		}
 	}, [loading, user, navigate]);
+
+	// Get project ID (customize this based on your routing)
+	useEffect(() => {
+		setCurrentProjectId(projectId);
+	}, []);
+
+	const loadingRef = useRef(false);
+
+	useEffect(() => {
+		if (!currentProjectId || !user?._id) return;
+		if (loadingRef.current) return; // prevents double-run
+
+		loadingRef.current = true;
+
+		const initUserProject = async () => {
+			try {
+				const response = await fetch(`${API_BASE_URL}/user-projects`, {
+					method: "GET",
+					credentials: "include",
+				});
+
+				if (!response.ok) return;
+
+				const projects = await response.json();
+				const currentProject = projects.find(
+					(p) => p.project._id === currentProjectId
+				);
+
+				if (currentProject) {
+					setUserProjectId(currentProject._id);
+					setProjectStatus(currentProject.status);
+					return;
+				}
+
+				const createResponse = await fetch(`${API_BASE_URL}/user-projects`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					credentials: "include",
+					body: JSON.stringify({
+						project: currentProjectId,
+						status: "in-progress",
+					}),
+				});
+
+				if (createResponse.ok) {
+					const newProject = await createResponse.json();
+					setUserProjectId(newProject._id);
+					setProjectStatus(newProject.status);
+				}
+			} finally {
+				loadingRef.current = false;
+			}
+		};
+
+		initUserProject();
+	}, [currentProjectId, user]);
+
+	// Add callback for status change:
+	const handleStatusChange = (newStatus) => {
+		setProjectStatus(newStatus);
+	};
 
 	// Establish socket connection
 	useEffect(() => {
@@ -56,7 +150,6 @@ function Editor() {
 			if (s) {
 				setSocket(s);
 
-				// Socket event listeners
 				const handleConnect = () => {
 					console.log("✅ Socket connected");
 					setSocketConnected(true);
@@ -70,7 +163,6 @@ function Editor() {
 				s.on("connect", handleConnect);
 				s.on("disconnect", handleDisconnect);
 
-				// Set initial state if already connected
 				if (s.connected) {
 					setSocketConnected(true);
 				}
@@ -81,7 +173,6 @@ function Editor() {
 				};
 			}
 		} else {
-			// Disconnect socket if no user
 			disconnectSocket();
 			setSocket(null);
 			setSocketConnected(false);
@@ -136,9 +227,9 @@ function Editor() {
 
 		try {
 			const res = await fetch(
-				`http://localhost:3000/files/content?userId=${
-					user._id
-				}&socketId=${socket.id}&path=${encodeURIComponent(selectedFile)}`,
+				`http://localhost:3000/files/content?userId=${user._id}&socketId=${
+					socket.id
+				}&path=${encodeURIComponent(selectedFile)}`,
 				{
 					credentials: "include",
 				}
@@ -158,7 +249,7 @@ function Editor() {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [selectedFile, user]);
+	}, [selectedFile, user, socket]);
 
 	useEffect(() => {
 		if (selectedFile) {
@@ -199,7 +290,12 @@ function Editor() {
 			await fetch("http://localhost:3000/files/create", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ userId: user._id, path: newPath, type,socketId: socket.id }),
+				body: JSON.stringify({
+					userId: user._id,
+					path: newPath,
+					type,
+					socketId: socket.id,
+				}),
 				credentials: "include",
 			});
 		} catch (err) {
@@ -240,7 +336,12 @@ function Editor() {
 			await fetch("http://localhost:3000/files/rename", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ userId: user._id, oldPath: path, newPath, socketId: socket.id }),
+				body: JSON.stringify({
+					userId: user._id,
+					oldPath: path,
+					newPath,
+					socketId: socket.id,
+				}),
 				credentials: "include",
 			});
 
@@ -271,7 +372,7 @@ function Editor() {
 	useEffect(() => {
 		const handleMouseMove = (e) => {
 			if (!isResizing) return;
-			const newHeight = window.innerHeight - e.clientY;
+			const newHeight = window.innerHeight - e.clientY - 90; // Account for navbar/footer
 			if (newHeight >= 150 && newHeight <= 600) {
 				setTerminalHeight(newHeight);
 			}
@@ -340,13 +441,15 @@ function Editor() {
 				display: "flex",
 				flexDirection: "column",
 				height: "100vh",
+				minHeight: "100vh",
+				width: "100%",
+				overflow: "hidden",
+
 				backgroundColor: "#1e1e1e",
 				color: "#cccccc",
 				fontFamily:
 					'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-				// padding: "8px",
 				paddingTop: "76px",
-				paddingBottom: "90px",
 			}}
 		>
 			{/* Top Bar */}
@@ -359,6 +462,7 @@ function Editor() {
 					alignItems: "center",
 					padding: "0 12px",
 					gap: "12px",
+					flexShrink: 0,
 				}}
 			>
 				<button
@@ -392,11 +496,22 @@ function Editor() {
 					<Bot size={18} />
 				</button>
 				<span style={{ fontSize: "13px", fontWeight: 500 }}>
-					Docker IDE - {user?.username}
+					IDE - {user?.username}
 				</span>
+
+				{/* Project Completion Button */}
+				{userProjectId && (
+					<div style={{ marginLeft: "auto", marginRight: "12px" }}>
+						<ProjectCompletionButton
+							userProjectId={userProjectId}
+							currentStatus={projectStatus}
+							onStatusChange={handleStatusChange}
+						/>
+					</div>
+				)}
+
 				<div
 					style={{
-						marginLeft: "auto",
 						display: "flex",
 						alignItems: "center",
 						gap: "8px",
@@ -416,7 +531,14 @@ function Editor() {
 			</div>
 
 			{/* Main Area */}
-			<div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+			<div
+				style={{
+					display: "flex",
+					flex: 1,
+					overflow: "hidden",
+					height: "100%",
+				}}
+			>
 				{/* Sidebar */}
 				{sidebarOpen && (
 					<div
@@ -427,10 +549,37 @@ function Editor() {
 							display: "flex",
 							flexDirection: "column",
 							overflow: "hidden",
+							flexShrink: 0,
 						}}
 					>
 						<PortDisplay socket={socket} userId={user?._id} />
-						<div style={{ flex: 1, overflow: "hidden" }}>
+
+						{/* Task Panel - Collapsible */}
+						<div
+							style={{
+								maxHeight: "50%",
+								overflow: "hidden",
+								borderBottom: "1px solid #2d2d30",
+								display: "flex",
+								flexDirection: "column",
+							}}
+						>
+							<TaskPanel
+								projectId={currentProjectId}
+								userId={user?._id}
+								onTaskSelect={setCurrentTask}
+							/>
+						</div>
+
+						{/* File Tree - Remaining Space */}
+						<div
+							style={{
+								flex: 1,
+								overflow: "hidden",
+								display: "flex",
+								flexDirection: "column",
+							}}
+						>
 							<FileTree
 								tree={fileTree}
 								onSelect={handleSelect}
@@ -444,145 +593,192 @@ function Editor() {
 					</div>
 				)}
 
-				{/* Editor Area */}
+				{/* Center: Editor + Terminal */}
 				<div
 					style={{
 						flex: 1,
 						display: "flex",
 						flexDirection: "column",
 						overflow: "hidden",
+						minWidth: 0,
 					}}
 				>
-					{selectedFile && (
+					{/* Editor */}
+					<div
+						style={{
+							flex: 1,
+							display: "flex",
+							flexDirection: "column",
+							overflow: "hidden",
+							minHeight: 0,
+						}}
+					>
+						{selectedFile && (
+							<div
+								style={{
+									height: "36px",
+									backgroundColor: "#2d2d2d",
+									borderBottom: "1px solid #2d2d30",
+									display: "flex",
+									alignItems: "center",
+									padding: "0 12px",
+									gap: "8px",
+									flexShrink: 0,
+								}}
+							>
+								<FileCode size={16} style={{ color: "#858585" }} />
+								<span style={{ fontSize: "13px" }}>
+									{selectedFile.split("/").pop()}
+								</span>
+								{!isSaved && (
+									<>
+										<span
+											style={{
+												width: "6px",
+												height: "6px",
+												borderRadius: "50%",
+												backgroundColor: "#ff9800",
+											}}
+										></span>
+										<button
+											onClick={handleManualSave}
+											style={{
+												marginLeft: "auto",
+												padding: "4px 12px",
+												fontSize: "12px",
+												backgroundColor: "#0e639c",
+												color: "white",
+												border: "none",
+												borderRadius: "2px",
+												cursor: "pointer",
+												display: "flex",
+												alignItems: "center",
+												gap: "6px",
+											}}
+										>
+											<Save size={14} />
+											Save
+										</button>
+									</>
+								)}
+							</div>
+						)}
+
 						<div
 							style={{
-								height: "36px",
-								backgroundColor: "#2d2d2d",
-								borderBottom: "1px solid #2d2d30",
-								display: "flex",
-								alignItems: "center",
-								padding: "0 12px",
-								gap: "8px",
+								flex: 1,
+								position: "relative",
+								overflow: "hidden",
+								minHeight: 0,
 							}}
 						>
-							<FileCode size={16} style={{ color: "#858585" }} />
-							<span style={{ fontSize: "13px" }}>
-								{selectedFile.split("/").pop()}
-							</span>
-							{!isSaved && (
-								<>
-									<span
+							{selectedFile ? (
+								error ? (
+									<div
 										style={{
-											width: "6px",
-											height: "6px",
-											borderRadius: "50%",
-											backgroundColor: "#ff9800",
-										}}
-									></span>
-									<button
-										onClick={handleManualSave}
-										style={{
-											marginLeft: "auto",
-											padding: "4px 12px",
-											fontSize: "12px",
-											backgroundColor: "#0e639c",
-											color: "white",
-											border: "none",
-											borderRadius: "2px",
-											cursor: "pointer",
 											display: "flex",
 											alignItems: "center",
-											gap: "6px",
+											justifyContent: "center",
+											height: "100%",
+											color: "#f48771",
 										}}
 									>
-										<Save size={14} />
-										Save
-									</button>
-								</>
-							)}
-						</div>
-					)}
-
-					<div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
-						{selectedFile ? (
-							error ? (
-								<div
-									style={{
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "center",
-										height: "100%",
-										color: "#f48771",
-									}}
-								>
-									<div style={{ textAlign: "center" }}>
-										<p style={{ fontSize: "14px", marginBottom: "8px" }}>
-											Error
-										</p>
-										<p style={{ fontSize: "12px", opacity: 0.8 }}>{error}</p>
+										<div style={{ textAlign: "center" }}>
+											<p style={{ fontSize: "14px", marginBottom: "8px" }}>
+												Error
+											</p>
+											<p style={{ fontSize: "12px", opacity: 0.8 }}>{error}</p>
+										</div>
 									</div>
-								</div>
-							) : isLoading ? (
+								) : isLoading ? (
+									<div
+										style={{
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "center",
+											height: "100%",
+											fontSize: "13px",
+											color: "#858585",
+										}}
+									>
+										Loading...
+									</div>
+								) : (
+									<AceEditor
+										width="100%"
+										height="100%"
+										mode={getFileMode({ selectedFile })}
+										theme="monokai"
+										value={code}
+										onChange={setCode}
+										name="code-editor"
+										editorProps={{ $blockScrolling: true }}
+										setOptions={{
+											enableBasicAutocompletion: true,
+											enableLiveAutocompletion: true,
+											enableSnippets: true,
+											showLineNumbers: true,
+											tabSize: 2,
+											fontSize: 13,
+											showPrintMargin: false,
+										}}
+									/>
+								)
+							) : (
 								<div
 									style={{
 										display: "flex",
 										alignItems: "center",
 										justifyContent: "center",
 										height: "100%",
-										fontSize: "13px",
+										flexDirection: "column",
+										gap: "12px",
 										color: "#858585",
 									}}
 								>
-									Loading...
+									<FileCode size={48} style={{ opacity: 0.3 }} />
+									<div style={{ textAlign: "center" }}>
+										<p style={{ fontSize: "16px", marginBottom: "8px" }}>
+											No file selected
+										</p>
+										<p style={{ fontSize: "12px" }}>
+											Select a file from the explorer to start editing
+										</p>
+									</div>
 								</div>
-							) : (
-								<AceEditor
-									width="100%"
-									height="100%"
-									mode={getFileMode({ selectedFile })}
-									theme="monokai"
-									value={code}
-									onChange={setCode}
-									name="code-editor"
-									editorProps={{ $blockScrolling: true }}
-									setOptions={{
-										enableBasicAutocompletion: true,
-										enableLiveAutocompletion: true,
-										enableSnippets: true,
-										showLineNumbers: true,
-										tabSize: 2,
-										fontSize: 13,
-										showPrintMargin: false,
-									}}
-								/>
-							)
-						) : (
-							<div
-								style={{
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									height: "100%",
-									flexDirection: "column",
-									gap: "12px",
-									color: "#858585",
-								}}
-							>
-								<FileCode size={48} style={{ opacity: 0.3 }} />
-								<div style={{ textAlign: "center" }}>
-									<p style={{ fontSize: "16px", marginBottom: "8px" }}>
-										No file selected
-									</p>
-									<p style={{ fontSize: "12px" }}>
-										Select a file from the explorer to start editing
-									</p>
-								</div>
-							</div>
-						)}
+							)}
+						</div>
+					</div>
+
+					{/* Terminal Resizer */}
+					<div
+						onMouseDown={handleMouseDown}
+						style={{
+							height: "4px",
+							backgroundColor: isResizing ? "#0e639c" : "#2d2d30",
+							cursor: "ns-resize",
+							transition: "background-color 0.2s",
+							flexShrink: 0,
+						}}
+					/>
+
+					{/* Terminal */}
+					<div
+						style={{
+							height: `${terminalHeight}px`,
+							backgroundColor: "#1e1e1e",
+							borderTop: "1px solid #2d2d30",
+							display: "flex",
+							flexDirection: "column",
+							overflow: "hidden",
+							flexShrink: 0,
+						}}
+					>
+						<Terminal userId={user?._id} />
 					</div>
 				</div>
 
-				{/* AI Assistant Panel */}
+				{/* AI Assistant Panel - Full Height */}
 				{aiPanelOpen && (
 					<div
 						style={{
@@ -592,40 +788,19 @@ function Editor() {
 							display: "flex",
 							flexDirection: "column",
 							overflow: "hidden",
+							flexShrink: 0,
 						}}
 					>
 						<AIAssistant
 							userId={user?._id}
+							projectId={currentProjectId}
 							selectedFile={selectedFile}
 							code={code}
+							socket={socket}
+							currentTask={currentTask}
 						/>
 					</div>
 				)}
-			</div>
-
-			{/* Terminal Resizer */}
-			<div
-				onMouseDown={handleMouseDown}
-				style={{
-					height: "4px",
-					backgroundColor: isResizing ? "#0e639c" : "#2d2d30",
-					cursor: "ns-resize",
-					transition: "background-color 0.2s",
-				}}
-			/>
-
-			{/* Terminal */}
-			<div
-				style={{
-					height: `${terminalHeight}px`,
-					backgroundColor: "#1e1e1e",
-					borderTop: "1px solid #2d2d30",
-					display: "flex",
-					flexDirection: "column",
-					overflow: "hidden",
-				}}
-			>
-				<Terminal userId={user?._id} />
 			</div>
 		</div>
 	);

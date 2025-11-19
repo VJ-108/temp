@@ -6,494 +6,280 @@ import { getSocket } from "../socket.js";
 import { Plus, X, Terminal as TerminalIcon } from "lucide-react";
 
 const Terminal = ({ userId }) => {
-	const [terminals, setTerminals] = useState([]);
-	const [activeTerminalId, setActiveTerminalId] = useState("default");
-	const terminalInstances = useRef(new Map());
-	const containerRefs = useRef(new Map());
-	const socketRef = useRef(null);
+  const [terminals, setTerminals] = useState([]);
+  const [activeTerminalId, setActiveTerminalId] = useState("default");
+  const terminalInstances = useRef(new Map());
+  const containerRefs = useRef(new Map());
+  const socketRef = useRef(null);
 
-	useEffect(() => {
-		if (!userId) {
-			console.warn("⚠️  Terminal: No userId provided");
-			return;
-		}
+  useEffect(() => {
+    if (!userId) {
+      console.warn("⚠️  Terminal: No userId provided");
+      return;
+    }
 
-		// Get existing socket connection
-		const socket = getSocket();
+    const socket = getSocket();
+    if (!socket) {
+      console.error("❌ Terminal: Socket not initialized");
+      return;
+    }
 
-		if (!socket) {
-			console.error("❌ Terminal: Socket not initialized");
-			return;
-		}
+    const initialize = () => {
+      if (terminalInstances.current.size > 0) return;
+      console.log("🖥️  Initializing terminal for user:", userId);
 
-		if (!socket.connected) {
-			console.warn("⚠️  Terminal: Socket not connected yet, waiting...");
+      setTerminals([{ id: "default", name: "Terminal 1" }]);
+      setTimeout(() => initializeTerminal("default"), 100);
+    };
 
-			// Wait for socket to connect
-			const handleConnect = () => {
-				console.log("✅ Terminal: Socket connected, initializing...");
-				if (terminalInstances.current.size > 0) {
-					console.log("⚠️ Terminals already initialized — skipping re-init");
-					return;
-				}
+    if (socket.connected) initialize();
+    else socket.once("connect", initialize);
 
-				initializeTerminals();
-			};
+    socket.on("terminal:data", ({ terminalId, data }) => {
+      const instance = terminalInstances.current.get(terminalId);
+      instance?.term?.write(data);
+    });
 
-			socket.once("connect", handleConnect);
+    socket.on("terminal:closed", ({ terminalId }) => {
+      handleServerTerminalClose(terminalId);
+    });
 
-			return () => {
-				socket.off("connect", handleConnect);
-			};
-		} else {
-			// Socket already connected
-			console.log("✅ Terminal: Socket already connected");
-			initializeTerminals();
-		}
+    socketRef.current = socket;
 
-		socketRef.current = socket;
+    return () => {
+      socket.removeAllListeners("terminal:data");
+      socket.removeAllListeners("terminal:closed");
+      terminalInstances.current.forEach(({ term }) => term.dispose());
+      terminalInstances.current.clear();
+    };
+  }, [userId]);
 
-		function initializeTerminals() {
-			console.log("🖥️  Initializing terminals for user:", userId);
+  // ✅ Fully scroll-stable terminal initializer
+  const initializeTerminal = (terminalId) => {
+    const tryInit = () => {
+      const container = containerRefs.current.get(terminalId);
+      if (!container) return false;
+      if (terminalInstances.current.has(terminalId)) return true;
 
-			// Set default terminal
-			setTerminals([{ id: "default", name: "Terminal 1" }]);
+      try {
+        const term = new XTerminal({
+          rows: 30,
+          cols: 80,
+          convertEol: true,
+          cursorBlink: true,
+          cursorStyle: "block",
+          fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+          fontSize: 14,
+          scrollback: 1000,
+          theme: {
+            background: "#1e1e1e",
+            foreground: "#d4d4d4",
+            cursor: "#ffffff",
+          },
+        });
 
-			// Initialize default terminal UI
-			setTimeout(() => {
-				initializeTerminal("default");
-			}, 100);
+        const fitAddon = new FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(container);
 
-			// Socket event listeners
-			const handleTerminalData = ({ terminalId, data }) => {
-				const instance = terminalInstances.current.get(terminalId);
-				if (instance?.term) {
-					instance.term.write(data);
-				}
-			};
+        // 🧠 Step 1: Prevent xterm focus scroll
+        setTimeout(() => {
+          if (document.activeElement === container.querySelector("textarea")) {
+            document.activeElement.blur();
+          }
+        }, 0);
 
-			const handleTerminalCreated = ({ terminalId }) => {
-				console.log(`✅ Terminal ${terminalId} created on server`);
-			};
+        // 🧠 Step 2: Lock scroll at top temporarily during initialization
+        const lockScroll = () => window.scrollTo({ top: 0, behavior: "auto" });
+        window.addEventListener("scroll", lockScroll);
 
-			const handleTerminalClosed = ({ terminalId }) => {
-				console.log(`🛑 Terminal ${terminalId} closed by server`);
-				handleServerTerminalClose(terminalId);
-			};
+        // 🧠 Step 3: Fit terminal and restore scroll position
+        setTimeout(() => {
+          try {
+            fitAddon.fit();
+          } catch (err) {
+            console.error("FitAddon error:", err);
+          }
+          window.scrollTo({ top: 0, behavior: "auto" });
+          window.removeEventListener("scroll", lockScroll);
+        }, 400);
 
-			const handleTerminalError = ({ terminalId, error }) => {
-				console.error(`❌ Terminal error (${terminalId}):`, error);
-				alert(`Terminal error: ${error}`);
-			};
+        // Handle input
+        term.onData((data) => {
+          const socket = getSocket();
+          if (socket?.connected) {
+            socket.emit("terminal:write", { terminalId, input: data });
+          }
+        });
 
-			const handleTerminalList = ({ terminals: termList }) => {
-				console.log("📋 Terminal list received:", termList);
-			};
+        terminalInstances.current.set(terminalId, { term, fitAddon });
+        console.log(`✅ Terminal ${terminalId} initialized`);
+        return true;
+      } catch (err) {
+        console.error("❌ Error initializing terminal:", err);
+        return false;
+      }
+    };
 
-			socket.on("terminal:data", handleTerminalData);
-			socket.on("terminal:created", handleTerminalCreated);
-			socket.on("terminal:closed", handleTerminalClosed);
-			socket.on("terminal:error", handleTerminalError);
-			socket.on("terminal:list", handleTerminalList);
+    let attempts = 0;
+    const maxAttempts = 10;
+    const retry = () => {
+      if (tryInit()) return;
+      if (++attempts < maxAttempts) setTimeout(retry, 100);
+    };
+    retry();
+  };
 
-			// Cleanup
-			return () => {
-				socket.off("terminal:data", handleTerminalData);
-				socket.off("terminal:created", handleTerminalCreated);
-				socket.off("terminal:closed", handleTerminalClosed);
-				socket.off("terminal:error", handleTerminalError);
-				socket.off("terminal:list", handleTerminalList);
+  const createNewTerminal = () => {
+    if (terminals.length >= 5) {
+      alert("Maximum 5 terminals allowed");
+      return;
+    }
 
-				// Dispose all terminal instances
-				terminalInstances.current.forEach(({ term }) => {
-					try {
-						term.dispose();
-					} catch (err) {
-						console.error("Error disposing terminal:", err);
-					}
-				});
-				terminalInstances.current.clear();
-			};
-		}
+    const socket = getSocket();
+    if (!socket?.connected) {
+      alert("Socket not connected");
+      return;
+    }
 
-		// Proper cleanup for all socket listeners and terminals
-		return () => {
-			const socket = socketRef.current;
-			if (socket) {
-				socket.off("terminal:data");
-				socket.off("terminal:created");
-				socket.off("terminal:closed");
-				socket.off("terminal:error");
-				socket.off("terminal:list");
-			}
+    const terminalId = `terminal_${Date.now()}`;
+    const name = `Terminal ${terminals.length + 1}`;
+    setTerminals((prev) => [...prev, { id: terminalId, name }]);
 
-			terminalInstances.current.forEach(({ term }) => {
-				try {
-					term.dispose();
-				} catch {}
-			});
-			terminalInstances.current.clear();
-		};
-	}, [userId]);
+    setTimeout(() => initializeTerminal(terminalId), 100);
+    setActiveTerminalId(terminalId);
 
-	const initializeTerminal = (terminalId) => {
-		// Wait for DOM element
-		const checkAndInit = () => {
-			const container = containerRefs.current.get(terminalId);
+    socket.emit("terminal:create", { terminalId });
+  };
 
-			if (!container) {
-				console.warn(`⚠️  Container for ${terminalId} not ready, retrying...`);
-				return false;
-			}
+  const handleServerTerminalClose = (terminalId) => {
+    const instance = terminalInstances.current.get(terminalId);
+    instance?.term?.dispose();
+    terminalInstances.current.delete(terminalId);
+    containerRefs.current.delete(terminalId);
+    setTerminals((prev) => prev.filter((t) => t.id !== terminalId));
+    if (activeTerminalId === terminalId) setActiveTerminalId("default");
+  };
 
-			if (terminalInstances.current.has(terminalId)) {
-				console.log(`✅ Terminal ${terminalId} already initialized`);
-				return true;
-			}
+  const closeTerminal = (terminalId) => {
+    if (terminalId === "default") {
+      alert("Cannot close default terminal");
+      return;
+    }
 
-			try {
-				const term = new XTerminal({
-					rows: 30,
-					cols: 80,
-					convertEol: true,
-					cursorBlink: true,
-					cursorStyle: "block",
-					fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-					fontSize: 14,
-					scrollback: 1000,
-					theme: {
-						background: "#1e1e1e",
-						foreground: "#d4d4d4",
-						cursor: "#ffffff",
-						black: "#000000",
-						red: "#cd3131",
-						green: "#0dbc79",
-						yellow: "#e5e510",
-						blue: "#2472c8",
-						magenta: "#bc3fbc",
-						cyan: "#11a8cd",
-						white: "#e5e5e5",
-					},
-					// These settings prevent local echo
-					allowProposedApi: false,
-				});
+    const socket = getSocket();
+    if (!socket?.connected) return;
 
-				const fitAddon = new FitAddon();
-				term.loadAddon(fitAddon);
-				term.open(container);
+    const instance = terminalInstances.current.get(terminalId);
+    instance?.term?.dispose();
+    terminalInstances.current.delete(terminalId);
+    containerRefs.current.delete(terminalId);
+    setTerminals((prev) => prev.filter((t) => t.id !== terminalId));
+    if (activeTerminalId === terminalId) setActiveTerminalId("default");
 
-				// Fit terminal to container
-				setTimeout(() => {
-					try {
-						fitAddon.fit();
-					} catch (err) {
-						console.error("Error fitting terminal:", err);
-					}
-				}, 50);
+    socket.emit("terminal:close", { terminalId });
+  };
 
-				// Handle input - send everything to server, server echoes back
-				const disposable = term.onData((data) => {
-					const socket = getSocket();
-					if (socket && socket.connected) {
-						socket.emit("terminal:write", { terminalId, input: data });
-					}
-				});
+  // ✅ Focus only when switching, not on load
+  const switchTerminal = (terminalId) => {
+    setActiveTerminalId(terminalId);
+    setTimeout(() => {
+      const instance = terminalInstances.current.get(terminalId);
+      if (instance?.fitAddon) {
+        try {
+          instance.fitAddon.fit();
+          instance.term.focus();
+        } catch {}
+      }
+    }, 100);
+  };
 
-				terminalInstances.current.set(terminalId, {
-					term,
-					fitAddon,
-					disposable,
-				});
-				console.log(`✅ Terminal ${terminalId} initialized in UI`);
+  // Auto-fit on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      terminalInstances.current.forEach(({ fitAddon }) => {
+        try {
+          fitAddon.fit();
+        } catch {}
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-				return true;
-			} catch (err) {
-				console.error(`❌ Error initializing terminal ${terminalId}:`, err);
-				return false;
-			}
-		};
+  if (!userId)
+    return (
+      <div className="flex items-center justify-center h-full text-sm text-gray-400">
+        Waiting for user authentication...
+      </div>
+    );
 
-		// Try multiple times with delay
-		let attempts = 0;
-		const maxAttempts = 10;
+  const socket = getSocket();
+  if (!socket?.connected)
+    return (
+      <div className="flex items-center justify-center h-full text-sm text-gray-400">
+        Connecting to terminal...
+      </div>
+    );
 
-		const tryInit = () => {
-			if (checkAndInit()) {
-				return;
-			}
+  return (
+    <div className="flex flex-col h-full">
+      {/* Tabs */}
+      <div className="flex items-center gap-1 bg-[#1e1e1e] border-b border-[#2d2d30] px-2 overflow-x-auto flex-shrink-0">
+        {terminals.map((t) => (
+          <div
+            key={t.id}
+            onClick={() => switchTerminal(t.id)}
+            className={`flex items-center gap-2 px-3 py-1.5 text-xs rounded-t-md cursor-pointer whitespace-nowrap transition-all ${
+              activeTerminalId === t.id
+                ? "bg-[#252526] text-white"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <TerminalIcon size={14} />
+            <span>{t.name}</span>
+            {t.id !== "default" && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeTerminal(t.id);
+                }}
+                className="text-gray-500 hover:text-gray-300"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        ))}
 
-			attempts++;
-			if (attempts < maxAttempts) {
-				setTimeout(tryInit, 100);
-			} else {
-				console.error(
-					`❌ Failed to initialize terminal ${terminalId} after ${maxAttempts} attempts`
-				);
-			}
-		};
+        {/* New Terminal Button */}
+        <button
+          onClick={createNewTerminal}
+          disabled={terminals.length >= 5}
+          className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-md transition-all ${
+            terminals.length >= 5
+              ? "text-gray-600 cursor-not-allowed"
+              : "text-gray-400 hover:text-white"
+          }`}
+        >
+          <Plus size={14} />
+          <span>New</span>
+        </button>
+      </div>
 
-		tryInit();
-	};
-
-	const createNewTerminal = () => {
-		if (terminals.length >= 5) {
-			alert("Maximum 5 terminals allowed");
-			return;
-		}
-
-		const socket = getSocket();
-		if (!socket || !socket.connected) {
-			alert("Socket not connected. Please wait...");
-			return;
-		}
-
-		const terminalId = `terminal_${Date.now()}`;
-		const terminalName = `Terminal ${terminals.length + 1}`;
-
-		// Add to UI
-		setTerminals((prev) => [...prev, { id: terminalId, name: terminalName }]);
-
-		// Initialize UI
-		setTimeout(() => {
-			initializeTerminal(terminalId);
-		}, 100);
-
-		// Switch to new terminal
-		setActiveTerminalId(terminalId);
-
-		// Request server to create terminal
-		socket.emit("terminal:create", { terminalId });
-	};
-
-	const handleServerTerminalClose = (terminalId) => {
-		// Terminal closed by server
-		const instance = terminalInstances.current.get(terminalId);
-		if (instance?.term) {
-			try {
-				instance.term.dispose();
-			} catch (err) {
-				console.error("Error disposing terminal:", err);
-			}
-		}
-
-		terminalInstances.current.delete(terminalId);
-		containerRefs.current.delete(terminalId);
-		setTerminals((prev) => prev.filter((t) => t.id !== terminalId));
-
-		if (activeTerminalId === terminalId) {
-			setActiveTerminalId("default");
-		}
-	};
-
-	const closeTerminal = (terminalId) => {
-		if (terminalId === "default") {
-			alert("Cannot close the default terminal");
-			return;
-		}
-
-		const socket = getSocket();
-		if (!socket || !socket.connected) {
-			console.warn("⚠️  Socket not connected, cannot close terminal");
-			return;
-		}
-
-		// Dispose UI
-		const instance = terminalInstances.current.get(terminalId);
-		if (instance?.term) {
-			try {
-				instance.term.dispose();
-			} catch (err) {
-				console.error("Error disposing terminal:", err);
-			}
-		}
-
-		terminalInstances.current.delete(terminalId);
-		containerRefs.current.delete(terminalId);
-		setTerminals((prev) => prev.filter((t) => t.id !== terminalId));
-
-		if (activeTerminalId === terminalId) {
-			setActiveTerminalId("default");
-		}
-
-		// Notify server
-		socket.emit("terminal:close", { terminalId });
-	};
-
-	const switchTerminal = (terminalId) => {
-		setActiveTerminalId(terminalId);
-
-		setTimeout(() => {
-			const instance = terminalInstances.current.get(terminalId);
-			if (instance?.fitAddon) {
-				try {
-					instance.fitAddon.fit();
-					instance.term.focus();
-				} catch (err) {
-					console.error("Error fitting terminal:", err);
-				}
-			}
-		}, 50);
-	};
-
-	// Handle window resize
-	useEffect(() => {
-		const handleResize = () => {
-			terminalInstances.current.forEach(({ fitAddon }) => {
-				try {
-					fitAddon.fit();
-				} catch (err) {
-					// Ignore resize errors
-				}
-			});
-		};
-
-		window.addEventListener("resize", handleResize);
-		return () => window.removeEventListener("resize", handleResize);
-	}, []);
-
-	if (!userId) {
-		return (
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-					height: "100%",
-					fontSize: "13px",
-					color: "#858585",
-				}}
-			>
-				Waiting for user authentication...
-			</div>
-		);
-	}
-
-	const socket = getSocket();
-	if (!socket || !socket.connected) {
-		return (
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-					height: "100%",
-					fontSize: "13px",
-					color: "#858585",
-				}}
-			>
-				Connecting to terminal...
-			</div>
-		);
-	}
-
-	return (
-		<div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-			{/* Terminal Tabs */}
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: "2px",
-					backgroundColor: "#1e1e1e",
-					borderBottom: "1px solid #2d2d30",
-					padding: "0 8px",
-					overflowX: "auto",
-					flexShrink: 0,
-				}}
-			>
-				{terminals.map((terminal) => (
-					<div
-						key={terminal.id}
-						onClick={() => switchTerminal(terminal.id)}
-						style={{
-							display: "flex",
-							alignItems: "center",
-							gap: "8px",
-							padding: "6px 12px",
-							fontSize: "12px",
-							backgroundColor:
-								activeTerminalId === terminal.id ? "#252526" : "transparent",
-							color: activeTerminalId === terminal.id ? "#ffffff" : "#858585",
-							cursor: "pointer",
-							borderRadius: "4px 4px 0 0",
-							transition: "all 0.2s",
-							whiteSpace: "nowrap",
-							userSelect: "none",
-						}}
-					>
-						<TerminalIcon size={14} />
-						<span>{terminal.name}</span>
-						{terminal.id !== "default" && (
-							<button
-								onClick={(e) => {
-									e.stopPropagation();
-									closeTerminal(terminal.id);
-								}}
-								style={{
-									background: "none",
-									border: "none",
-									color: "#858585",
-									cursor: "pointer",
-									padding: "2px",
-									display: "flex",
-									alignItems: "center",
-								}}
-							>
-								<X size={14} />
-							</button>
-						)}
-					</div>
-				))}
-
-				{/* New Terminal Button */}
-				<button
-					onClick={createNewTerminal}
-					disabled={terminals.length >= 5}
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "4px",
-						padding: "6px 10px",
-						fontSize: "12px",
-						backgroundColor: "transparent",
-						color: terminals.length >= 5 ? "#3e3e42" : "#858585",
-						border: "none",
-						cursor: terminals.length >= 5 ? "not-allowed" : "pointer",
-						borderRadius: "4px",
-						transition: "all 0.2s",
-						marginLeft: "4px",
-					}}
-				>
-					<Plus size={14} />
-					<span>New</span>
-				</button>
-			</div>
-
-			{/* Terminal Containers */}
-			<div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
-				{terminals.map((terminal) => (
-					<div
-						key={terminal.id}
-						ref={(el) => {
-							if (el) {
-								containerRefs.current.set(terminal.id, el);
-							}
-						}}
-						style={{
-							position: "absolute",
-							top: 0,
-							left: 0,
-							width: "100%",
-							height: "100%",
-							padding: "10px",
-							backgroundColor: "#1e1e1e",
-							display: activeTerminalId === terminal.id ? "block" : "none",
-						}}
-					/>
-				))}
-			</div>
-		</div>
-	);
+      {/* Terminal Containers */}
+      <div className="flex-1 relative overflow-hidden">
+        {terminals.map((t) => (
+          <div
+            key={t.id}
+            ref={(el) => el && containerRefs.current.set(t.id, el)}
+            className="absolute inset-0 p-2 bg-[#1e1e1e]"
+            style={{ display: activeTerminalId === t.id ? "block" : "none" }}
+          />
+        ))}
+      </div>
+    </div>
+  );
 };
 
 export default Terminal;
