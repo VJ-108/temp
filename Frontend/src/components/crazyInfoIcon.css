@@ -1,0 +1,41 @@
+.ci-icon {
+  display: block;
+  cursor: pointer;
+  transition: transform .18s ease;
+}
+
+.ci-icon:hover {
+  transform: translateY(-2px);
+}
+
+/* Remove glow from all */
+.ci-neon,
+.ci-pulse,
+.ci-gradient {
+  filter: none !important;
+  animation: none !important;
+}
+
+/* Glass Version Clean */
+.ci-glass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #111;
+  border: 1px solid #222;
+  color: #4da6ff;
+  font-weight: 700;
+  font-family: Inter, system-ui;
+  cursor: pointer;
+  transition: transform .18s ease, background .18s ease;
+}
+
+.ci-glass:hover {
+  transform: translateY(-2px);
+  background: #1a1a1a;
+}
+
+.ci-glass-i {
+  line-height: 1;
+}

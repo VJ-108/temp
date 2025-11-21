@@ -15,7 +15,7 @@ const Home = () => {
       <HeroSection />
 
       {/* Wavy Divider */}
-      <div className="relative">
+      <div className="wave-wrapper">
         <svg
           className="absolute bottom-0 w-full h-24 text-gray-900"
           viewBox="0 0 1440 320"
@@ -53,7 +53,7 @@ const Home = () => {
       </section>
 
       {/* Wavy Divider */}
-      <div className="relative">
+      <div className="wave-wrapper">
         <svg
           className="absolute top-0 w-full h-24 text-gray-950"
           viewBox="0 0 1440 320"

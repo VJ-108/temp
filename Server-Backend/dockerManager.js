@@ -6,9 +6,10 @@ import { allocatePortRange, getDockerPortFlags, saveUserPorts, userPorts } from 
 export const tmpDir = joinPath(process.cwd(), "tmp");
 await fs.mkdir(tmpDir, { recursive: true });
 
-const CONTAINER_MEMORY_LIMIT = "512m";
-const CONTAINER_CPU_LIMIT = "0.5";
-const CONTAINER_PIDS_LIMIT = "100";
+const CONTAINER_MEMORY_LIMIT = "1g";   // or 2g if bigger projects
+const CONTAINER_CPU_LIMIT = "0.5";     // can stay
+const CONTAINER_PIDS_LIMIT = 500;      // prevent npm install from failing
+
 
 export async function createUserContainer(userId) {
 	const containerName = sanitizeContainerName(`user_${userId}`);

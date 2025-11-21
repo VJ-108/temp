@@ -8,6 +8,7 @@ import { getFileMode } from "../utils/getFileMode";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 import "ace-builds/src-noconflict/mode-javascript";
+import { SERVER_URL } from "@/utils/constants";
 
 const FileEditor = ({ userId, filePath }) => {
 	const [content, setContent] = useState("");
@@ -20,7 +21,7 @@ const FileEditor = ({ userId, filePath }) => {
 		const fetchContent = async () => {
 			try {
 				const res = await axios.get(
-					`http://localhost:3000/files/content?userId=${userId}&path=${filePath}`
+					`${SERVER_URL}/files/content?userId=${userId}&path=${filePath}`
 				);
 				setContent(res.data.content);
 			} catch (err) {

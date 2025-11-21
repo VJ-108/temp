@@ -1,5 +1,6 @@
 import { io } from "socket.io-client";
 import Cookies from "js-cookie";
+import { SERVER_URL } from "./utils/constants";
 
 let socket = null;
 
@@ -24,7 +25,7 @@ export const connectSocket = (userId) => {
 	
 	console.log("🔌 Connecting socket for user:", userId);
 
-	socket = io("http://localhost:3000", {
+	socket = io(`${SERVER_URL}`, {
 		// No need to send token in auth; HttpOnly cookie will be sent automatically
 		auth: {
 			userId, // optional, if you still need to identify user client-side

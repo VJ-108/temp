@@ -10,8 +10,12 @@ import { useAuth } from "../context/AuthContext";
 import { connectSocket, getSocket, disconnectSocket } from "../socket";
 import { useNavigate, useParams } from "react-router-dom";
 import ProjectCompletionButton from "../components/ProjectCompletionButton";
-import { API_BASE_URL } from "@/utils/constants";
+import { API_BASE_URL, SERVER_URL } from "@/utils/constants";
 import TaskPanel from "../components/TaskPanel";
+// import { Info } from "lucide-react";
+import InfoModal from "../components/InfoModal";
+import CrazyInfoIcon from "../components/CrazyInfoIcon";
+
 
 import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/mode-python";
@@ -44,6 +48,8 @@ function Editor() {
 	const [currentTask, setCurrentTask] = useState(null); // Track current task
 
 	const isSaved = selectedFileContent === code;
+	const [infoOpen, setInfoOpen] = useState(false);
+
 
 	// 🔧 Scroll Fix: Freeze scroll during layout mount
 	useEffect(() => {
@@ -227,7 +233,7 @@ function Editor() {
 
 		try {
 			const res = await fetch(
-				`http://localhost:3000/files/content?userId=${user._id}&socketId=${
+				`${SERVER_URL}/files/content?userId=${user._id}&socketId=${
 					socket.id
 				}&path=${encodeURIComponent(selectedFile)}`,
 				{
@@ -287,7 +293,7 @@ function Editor() {
 		const newPath = path ? `${path}/${newName}` : `/${newName}`;
 
 		try {
-			await fetch("http://localhost:3000/files/create", {
+			await fetch(`${SERVER_URL}/files/create`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
@@ -309,7 +315,7 @@ function Editor() {
 		if (!window.confirm(`Delete "${path}"?`)) return;
 
 		try {
-			await fetch("http://localhost:3000/files/delete", {
+			await fetch(`${SERVER_URL}/files/delete`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ userId: user._id, path, socketId: socket.id }),
@@ -333,7 +339,7 @@ function Editor() {
 		const newPath = pathParts.join("/");
 
 		try {
-			await fetch("http://localhost:3000/files/rename", {
+			await fetch(`${SERVER_URL}/files/rename`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
@@ -501,14 +507,37 @@ function Editor() {
 
 				{/* Project Completion Button */}
 				{userProjectId && (
-					<div style={{ marginLeft: "auto", marginRight: "12px" }}>
-						<ProjectCompletionButton
-							userProjectId={userProjectId}
-							currentStatus={projectStatus}
-							onStatusChange={handleStatusChange}
-						/>
-					</div>
-				)}
+    <div style={{ marginLeft: "auto", marginRight: "12px", display: "flex", alignItems: "center", gap: "10px" }}>
+
+        {/* ℹ️ Info Icon */}
+        <button
+            onClick={() => setInfoOpen(true)}
+            style={{
+                 background: "linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))",
+    border: "none",
+    padding: "6px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "8px",
+    cursor: "pointer",
+    gap: "6px",
+            }}
+            title="Show Project Info"
+        >
+            <CrazyInfoIcon size={28} variant="neon" />
+        </button>
+
+        <ProjectCompletionButton
+            userProjectId={userProjectId}
+            currentStatus={projectStatus}
+            onStatusChange={handleStatusChange}
+        />
+		<InfoModal open={infoOpen} onClose={() => setInfoOpen(false)} />
+
+    </div>
+)}
+
 
 				<div
 					style={{

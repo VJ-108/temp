@@ -118,35 +118,15 @@ const SignUp = () => {
         className="w-full max-w-md bg-[#0D1528]/80 backdrop-blur-xl border border-[#24324B] shadow-[0_0_40px_rgba(0,255,255,0.1)] rounded-3xl p-6 sm:p-8 text-gray-100 transition-transform duration-500 hover:scale-[1.02]"
       >
         {/* --- GLOWING TOGGLE --- */}
-        <div className="relative mb-8 bg-[#0B1222] rounded-2xl border border-[#1E2A3E] flex overflow-hidden shadow-[inset_0_0_10px_rgba(0,255,255,0.1)]">
-          <button
-            type="button"
-            onClick={() => setIsAdmin(false)}
-            className={`w-1/2 py-3 text-center font-semibold text-sm sm:text-base transition-all duration-300 relative ${
-              !isAdmin
-                ? "text-black bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_20px_rgba(0,255,255,0.6)] z-10"
-                : "text-gray-400 hover:text-cyan-300"
-            }`}
-          >
-            User Sign Up
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsAdmin(true)}
-            className={`w-1/2 py-3 text-center font-semibold text-sm sm:text-base transition-all duration-300 relative ${
-              isAdmin
-                ? "text-black bg-gradient-to-r from-purple-500 to-pink-500 shadow-[0_0_20px_rgba(255,0,255,0.6)] z-10"
-                : "text-gray-400 hover:text-pink-300"
-            }`}
-          >
-            Admin Sign Up
-          </button>
-          <div
-            className={`absolute bottom-0 left-0 w-1/2 h-[3px] rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500 ${
-              isAdmin ? "translate-x-full from-purple-500 to-pink-500" : ""
-            }`}
-          ></div>
-        </div>
+        <p className="text-center text-gray-400 mb-6">
+  Admin?{" "}
+  <Link
+    to="/adminsignup"
+    className="text-pink-400 hover:underline font-semibold"
+  >
+    Create admin account
+  </Link>
+</p>
 
         <h2 className="text-3xl font-bold mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-500 drop-shadow-[0_0_10px_rgba(0,255,255,0.3)]">
           Create Account ✨

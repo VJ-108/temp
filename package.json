@@ -6,7 +6,14 @@
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:server\"",
     "dev:frontend": "cd Frontend && npm run dev",
     "dev:server": "cd Server-Backend && npm run dev",
-    "dev:ml": "cd ml && python phi3_server.py"
+    "dev:ml": "cd ml && python phi3_server.py",
+    "start": "concurrently \"npm run start:frontend\" \"npm run start:server\"",
+    "start:frontend": "cd Frontend && npm run preview",
+    "start:server": "cd Server-Backend && npm start",
+    "build": "cd Frontend && npm run build",
+    "install": "concurrently \"npm run start:frontend\" \"npm run start:server\"",
+    "install:frontend": "cd Frontend && npm install",
+    "install:server": "cd Server-Backend && npm install"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
