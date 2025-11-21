@@ -1,7 +1,7 @@
 
 // src/pages/Home.jsx
-import AI from "../assets/Ai.jpg";
-import Smart from "../assets/Smart.jpg";
+import AI from "../assets/AI.jpg";
+import Smart from "../assets/smart.jpg";
 import web from "../assets/Website.jpg";
 import HeroSection from "../components/HeroSection";
 

@@ -10,10 +10,7 @@
     "start": "concurrently \"npm run start:frontend\" \"npm run start:server\"",
     "start:frontend": "cd Frontend && npm run preview",
     "start:server": "cd Server-Backend && npm start",
-    "build": "cd Frontend && npm run build",
-    "install": "concurrently \"npm run start:frontend\" \"npm run start:server\"",
-    "install:frontend": "cd Frontend && npm install",
-    "install:server": "cd Server-Backend && npm install"
+    "build": "cd Frontend && npm run build"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
