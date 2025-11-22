@@ -78,9 +78,7 @@
 }
 
 /* Sections */
-section {
-  margin-bottom: 30px;
-}
+
 
 /* Code Blocks */
 pre {
@@ -128,9 +126,47 @@ copy-btn:hover {
   color: #000 !important;
 }
 
+/* Code Block Container */
+.code-block {
+  position: relative;
+  margin: 18px 0;
+}
+
+/* Copy Button */
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: rgba(0, 255, 255, 0.20);
+  color: #00eaff;
+  border: 1px solid rgba(0, 255, 255, 0.45);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: 0.25s ease;
+}
+
+.copy-btn:hover {
+  background: rgba(0, 255, 255, 0.35);
+  color: white;
+  box-shadow: 0 0 12px rgba(0,255,255,0.4);
+}
+
+.copy-btn.copied {
+  background: #00eaff !important;
+  color: black !important;
+  border-color: #00eaff !important;
+  box-shadow: 0 0 15px #00eaff;
+}
+
+
 /* Footer */
 .footer-note {
   text-align: center;
   margin-top: 30px;
   color: #4da6ff;
 }
+
+

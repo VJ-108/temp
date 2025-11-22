@@ -1,41 +1,35 @@
-.ci-icon {
-  display: block;
-  cursor: pointer;
-  transition: transform .18s ease;
-}
+/* src/components/crazyInfoIcon.css */
+.ci-icon { display: block; cursor: pointer; transition: transform .18s ease, filter .18s ease; }
+.ci-icon:hover { transform: translateY(-2px) scale(1.04); }
 
-.ci-icon:hover {
-  transform: translateY(-2px);
-}
+/* Neon */
+.ci-neon { filter: drop-shadow(0 0 6px rgba(0,234,255,0.25)); }
+.ci-neon:hover { filter: drop-shadow(0 0 12px rgba(0,234,255,0.45)); }
 
-/* Remove glow from all */
-.ci-neon,
-.ci-pulse,
-.ci-gradient {
-  filter: none !important;
-  animation: none !important;
-}
+/* Pulse */
+@keyframes ciPulse { 0% { filter: drop-shadow(0 0 4px rgba(0,200,255,0.22)); } 50% { filter: drop-shadow(0 0 18px rgba(0,255,255,0.4)); } 100% { filter: drop-shadow(0 0 4px rgba(0,200,255,0.22)); } }
+.ci-pulse { animation: ciPulse 2.2s infinite; transition: transform .2s; }
+.ci-pulse:hover { transform: scale(1.06); }
 
-/* Glass Version Clean */
+/* Gradient */
+.ci-gradient { filter: drop-shadow(0 0 8px rgba(0,200,255,0.15)); }
+.ci-gradient:hover { filter: drop-shadow(0 0 18px rgba(255,0,234,0.2)); transform: rotate(-6deg) scale(1.02); }
+
+/* Glass */
 .ci-glass {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #111;
-  border: 1px solid #222;
-  color: #4da6ff;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+  color: #00eaff;
   font-weight: 700;
-  font-family: Inter, system-ui;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   cursor: pointer;
-  transition: transform .18s ease, background .18s ease;
+  transition: transform .18s ease, box-shadow .18s ease;
 }
-
-.ci-glass:hover {
-  transform: translateY(-2px);
-  background: #1a1a1a;
-}
-
-.ci-glass-i {
-  line-height: 1;
-}
+.ci-glass:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 10px 30px rgba(0,126,255,0.18); }
+.ci-glass-i { font-size: 0.65rem; line-height: 1; }
