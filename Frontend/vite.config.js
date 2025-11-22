@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'path'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
 export default defineConfig({
 	plugins: [react()],
 	resolve: {
@@ -16,6 +16,6 @@ export default defineConfig({
 	// ⭐ Needed to allow nip.io domain in Vite preview
 	preview: {
 		host: true,
-		allowedHosts: ["13.48.148.189.nip.io"],
+		allowedHosts: ["16.171.200.46.nip.io"],
 	},
 });
