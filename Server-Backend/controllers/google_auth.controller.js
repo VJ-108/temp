@@ -14,7 +14,7 @@ const googleauth = async (req, res) => {
 			httpOnly: true,
 			secure: false, // (HTTP ONLY)
 			sameSite: "lax",
-			domain: "13.61.4.151.nip.io",
+			domain: "13.48.148.189.nip.io",
 			path: "/",
 		};
 
