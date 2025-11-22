@@ -61,7 +61,10 @@ const refreshAccessToken = async (req, res) => {
 
 		const options = {
 			httpOnly: true,
-			secure: true,
+			secure: false, // (HTTP ONLY)
+			sameSite: "lax",
+			domain: "56.228.23.204.nip.io",
+			path: "/",
 		};
 
 		res.cookie("accessToken", newAccessToken, options);
@@ -222,7 +225,10 @@ const login = async (req, res) => {
 
 		const options = {
 			httpOnly: true,
-			secure: true,
+			secure: false, // (HTTP ONLY)
+			sameSite: "lax",
+			domain: "56.228.23.204.nip.io",
+			path: "/",
 		};
 
 		res
