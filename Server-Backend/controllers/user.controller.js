@@ -63,7 +63,7 @@ const refreshAccessToken = async (req, res) => {
 			httpOnly: true,
 			secure: false, // (HTTP ONLY)
 			sameSite: "lax",
-			domain: "56.228.23.204.nip.io",
+			domain: "13.61.4.151.nip.io",
 			path: "/",
 		};
 
@@ -151,7 +151,7 @@ const signup = async (req, res) => {
 			otp,
 			otpExpiry,
 			preferences: preferences || {},
-			avatar, 
+			avatar,
 		});
 
 		await sendOTP(email, otp);
@@ -227,7 +227,7 @@ const login = async (req, res) => {
 			httpOnly: true,
 			secure: false, // (HTTP ONLY)
 			sameSite: "lax",
-			domain: "56.228.23.204.nip.io",
+			domain: "13.61.4.151.nip.io",
 			path: "/",
 		};
 
@@ -302,10 +302,10 @@ const getProfile = async (req, res) => {
 
 const updateProfile = async (req, res) => {
 	try {
-		const { preferences, username, avatar  } = req.body;
+		const { preferences, username, avatar } = req.body;
 		const user = await User.findByIdAndUpdate(
 			req.user.id,
-			{ preferences, username,avatar },
+			{ preferences, username, avatar },
 			{
 				new: true,
 			}
