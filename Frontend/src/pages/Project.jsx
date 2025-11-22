@@ -4,174 +4,155 @@ import { API_BASE_URL } from "@/utils/constants";
 import { PencilIcon, TrashIcon, CheckIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import TaskBuilder from "@/components/TaskBuilder";
- 
+
 const Project = () => {
-  const [filter, setFilter] = useState("easy");
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [projectToDelete, setProjectToDelete] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [editingProject, setEditingProject] = useState(null);
-  const [editedData, setEditedData] = useState({});
-  const { user } = useAuth();
-  const [newProjectTasks, setNewProjectTasks] = useState([]);
-	const [newProjectObjectives, setNewProjectObjectives] = useState([]);
+	const [filter, setFilter] = useState("easy");
+	const [projects, setProjects] = useState([]);
+	const [loading, setLoading] = useState(true);
+
+	const [projectToDelete, setProjectToDelete] = useState(null);
+	const [showConfirm, setShowConfirm] = useState(false);
+
+	const [editingProject, setEditingProject] = useState(null);
+	const [editedData, setEditedData] = useState({});
 	const [editProjectTasks, setEditProjectTasks] = useState([]);
 	const [editProjectObjectives, setEditProjectObjectives] = useState([]);
- 
-  const Navigate = useNavigate();
- 
-  const fetchProjects = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/projects`, {
-        method: "GET",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch projects");
-      const data = await res.json();
-      setProjects(data);
-    } catch (err) {
-      console.error(err);
-      setProjects([]);
-    } finally {
-      setLoading(false);
-    }
-  };
- 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
- 
-  const filteredProjects = projects.filter(
-    (p) => p.difficulty.toLowerCase() === filter
-  );
- 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-white">
-        Loading projects...
-      </div>
-    );
-  }
- 
-  const handleDeleteClick = (id) => {
-    setProjectToDelete(id);
-    setShowConfirm(true);
-  };
- 
-  const confirmDelete = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/projects/${projectToDelete}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
- 
-      if (!res.ok) throw new Error("Failed to delete project");
- 
-      setProjects(projects.filter((p) => p._id !== projectToDelete));
-      setShowConfirm(false);
-      setProjectToDelete(null);
-    } catch (err) {
-      console.error("Error deleting project:", err);
-    }
-  };
- 
-  // Handle Edit toggle
-  const handleEditToggle = (proj) => {
-    if (editingProject === proj._id) {
-      setEditingProject(null);
-    } else {
-      setEditingProject(proj._id);
-      setEditedData(proj);
-    }
-  };
- 
-  // Handle Save (Update)
-  const handleSave = async (id) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/projects/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(editedData),
-      });
- 
-      if (!res.ok) {
-        throw new Error("Failed to update project");
-      }
- 
-      const updatedProject = await res.json();
-      setProjects(projects.map((p) => (p._id === id ? updatedProject : p)));
-      setEditingProject(null);
-    } catch (err) {
-      console.error("Error updating project:", err);
-    }
-  };
 
-  const handleSaveEdit = async () => {
+	const [newProjectTasks, setNewProjectTasks] = useState([]);
+	const [newProjectObjectives, setNewProjectObjectives] = useState([]);
+
+	const { user } = useAuth();
+	const Navigate = useNavigate();
+
+	// ---------------------- FETCH PROJECTS ----------------------
+	const fetchProjects = async () => {
 		try {
-			const res = await fetch(`${API_BASE_URL}/projects/${editingProject}`, {
-				method: "PUT",
-				headers: { "Content-Type": "application/json" },
+			const res = await fetch(`${API_BASE_URL}/projects`, {
+				method: "GET",
 				credentials: "include",
-				body: JSON.stringify(editedData),
+			});
+
+			if (!res.ok) throw new Error("Failed to fetch projects");
+
+			const data = await res.json();
+			setProjects(data);
+		} catch (err) {
+			console.error(err);
+			setProjects([]);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	useEffect(() => {
+		fetchProjects();
+	}, []);
+
+	const filteredProjects = projects.filter(
+		(p) => p.difficulty.toLowerCase() === filter
+	);
+
+	// ---------------------- DELETE HANDLING ----------------------
+	const handleDeleteClick = (id) => {
+		setProjectToDelete(id);
+		setShowConfirm(true);
+	};
+
+	const confirmDelete = async () => {
+		try {
+			const res = await fetch(`${API_BASE_URL}/projects/${projectToDelete}`, {
+				method: "DELETE",
+				credentials: "include",
+			});
+
+			if (!res.ok) throw new Error("Failed to delete project");
+
+			setProjects(projects.filter((p) => p._id !== projectToDelete));
+			setShowConfirm(false);
+			setProjectToDelete(null);
+		} catch (err) {
+			console.error("Error deleting project:", err);
+		}
+	};
+
+	// ---------------------- EDIT HANDLING ----------------------
+	const handleEditToggle = (proj) => {
+		if (editingProject === proj._id) {
+			setEditingProject(null);
+		} else {
+			setEditingProject(proj._id);
+			setEditedData(proj);
+
+			setEditProjectObjectives(proj.learningObjectives || []);
+			setEditProjectTasks(proj.tasks || []);
+		}
+	};
+
+	const handleSave = async (id) => {
+		try {
+			const finalData = {
+				...editedData,
+				learningObjectives: editProjectObjectives,
+				tasks: editProjectTasks,
+			};
+
+			const res = await fetch(`${API_BASE_URL}/projects/${id}`, {
+				method: "PUT",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				credentials: "include",
+				body: JSON.stringify(finalData),
 			});
 
 			if (!res.ok) throw new Error("Failed to update project");
 
-			const updatedProject = await res.json();
-			setProjects(
-				projects.map((p) => (p._id === editingProject ? updatedProject : p))
-			);
+			const updated = await res.json();
+
+			setProjects((prev) => prev.map((p) => (p._id === id ? updated : p)));
+
 			setEditingProject(null);
-			setEditedData({});
-			document.getElementById("editProjectModal")?.close();
 		} catch (err) {
 			console.error("Error updating project:", err);
 		}
 	};
- 
-  const handleChange = (e, key) => {
-    setEditedData({
-      ...editedData,
-      [key]: e.target.value,
-    });
-  };
- 
-  const handleCreateProject = async (e) => {
+
+	const handleChange = (e, key) => {
+		setEditedData({ ...editedData, [key]: e.target.value });
+	};
+
+	// ---------------------- CREATE PROJECT ----------------------
+	const handleCreateProject = async (e) => {
 		e.preventDefault();
-		const formData = new FormData(e.target);
+
+		const form = new FormData(e.target);
+
 		const newProject = {
-			title: formData.get("title"),
-			description: formData.get("description"),
-			techStack: formData
+			title: form.get("title"),
+			description: form.get("description"),
+			techStack: form
 				.get("techStack")
 				.split(",")
 				.map((t) => t.trim()),
-			difficulty: formData.get("difficulty"),
-			templateRepo: formData.get("templateRepo") || "",
-			learningObjectives: newProjectObjectives, // NEW
-			tasks: newProjectTasks, // NEW
+			difficulty: form.get("difficulty"),
+			templateRepo: form.get("templateRepo") || "",
+			learningObjectives: newProjectObjectives,
+			tasks: newProjectTasks,
 		};
 
 		try {
 			const res = await fetch(`${API_BASE_URL}/projects`, {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
+				headers: { "Content-Type": "application/json" },
 				credentials: "include",
 				body: JSON.stringify(newProject),
 			});
 
 			if (!res.ok) throw new Error("Failed to create project");
 
-			const createdProject = await res.json();
-			setProjects((prev) => [...prev, createdProject]);
+			const created = await res.json();
+			setProjects((prev) => [...prev, created]);
 
-			// Reset task state
 			setNewProjectTasks([]);
 			setNewProjectObjectives([]);
 
@@ -180,307 +161,8 @@ const Project = () => {
 			console.error("Error creating project:", err);
 		}
 	};
- 
-  return (
-		<div className="p-8 py-24 min-h-screen bg-gradient-to-br from-[#0A0F1C] via-[#111827] to-[#1f2937] text-[#F9FAFB]">
-			{/* Difficulty Filter & Add Project Button */}
-			<div
-				className={`flex ${
-					user?.role === "admin" ? "justify-between" : "justify-center"
-				} items-center mb-10`}
-			>
-				{/* Filter Buttons (left) */}
-				<div
-					className={`flex ${
-						user?.role === "admin" ? "mx-auto" : ""
-					} justify-center gap-6`}
-				>
-					{["easy", "medium", "hard"].map((level) => (
-						<button
-							key={level}
-							onClick={() => setFilter(level)}
-							className={`px-6 py-2 rounded-full font-semibold transition-all shadow-md
-          ${
-						filter === level
-							? level === "easy"
-								? "bg-green-500 text-black"
-								: level === "medium"
-								? "bg-yellow-400 text-black"
-								: "bg-red-500 text-white"
-							: "bg-gray-800 text-gray-300 hover:bg-gray-600"
-					}`}
-						>
-							{level.charAt(0).toUpperCase() + level.slice(1)}
-						</button>
-					))}
-				</div>
 
-				{/* Add Project Button for Admin */}
-				{user?.role === "admin" && (
-					<>
-						<button
-							className="flex items-center gap-2 px-5 py-2 bg-[#06B6D4] hover:bg-[#9333EA] rounded-full font-semibold shadow-md transition-all text-white"
-							onClick={() =>
-								document.getElementById("addProjectModal").showModal()
-							}
-						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								className="h-5 w-5"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth={2}
-									d="M12 4v16m8-8H4"
-								/>
-							</svg>
-							Add Project
-						</button>
-
-						{/* Add Project Modal */}
-						<dialog id="addProjectModal" className="modal">
-							<div className="modal-box bg-[#111827] text-[#F9FAFB] border border-[#374151]">
-								<h3 className="font-bold text-2xl text-[#06B6D4] mb-4">
-									Add New Project
-								</h3>
-
-								<form method="dialog" onSubmit={handleCreateProject}>
-									{/* Title */}
-									<label className="block mb-2 font-semibold">Title</label>
-									<input
-										name="title"
-										type="text"
-										placeholder="Enter project title"
-										className="input input-bordered w-full mb-4 bg-transparent border-[#374151] focus:border-[#06B6D4]"
-										required
-									/>
-
-									{/* Description */}
-									<label className="block mb-2 font-semibold">
-										Description
-									</label>
-									<textarea
-										name="description"
-										placeholder="Enter project description"
-										className="textarea textarea-bordered w-full mb-4 bg-transparent border-[#374151] focus:border-[#06B6D4]"
-										required
-									></textarea>
-
-									{/* Tech Stack */}
-									<label className="block mb-2 font-semibold">
-										Tech Stack (comma separated)
-									</label>
-									<input
-										name="techStack"
-										type="text"
-										placeholder="e.g. React, Node.js, MongoDB"
-										className="input input-bordered w-full mb-4 bg-transparent border-[#374151] focus:border-[#9333EA]"
-										required
-									/>
-
-									{/* Difficulty */}
-									<label className="block mb-2 font-semibold">Difficulty</label>
-									<select
-										name="difficulty"
-										className="select select-bordered w-full mb-4 bg-transparent border-[#374151] focus:border-[#9333EA] text-[#F9FAFB]"
-									>
-										<option value="easy">Easy</option>
-										<option value="medium">Medium</option>
-										<option value="hard">Hard</option>
-									</select>
-
-									{/* Repo Link */}
-									<label className="block mb-2 font-semibold">
-										Template Repo (optional)
-									</label>
-									<input
-										name="templateRepo"
-										type="text"
-										placeholder="https://github.com/user/repo"
-										className="input input-bordered w-full mb-4 bg-transparent border-[#374151] focus:border-[#06B6D4]"
-									/>
-
-									{/* NEW: Task Builder Component */}
-									<TaskBuilder
-										tasks={newProjectTasks}
-										setTasks={setNewProjectTasks}
-										learningObjectives={newProjectObjectives}
-										setLearningObjectives={setNewProjectObjectives}
-									/>
-
-									{/* Action Buttons */}
-									<div className="modal-action">
-										<button
-											type="submit"
-											className="btn bg-[#06B6D4] border-none hover:bg-[#9333EA] text-white"
-										>
-											Create Project
-										</button>
-										<button
-											type="button"
-											onClick={() =>
-												document.getElementById("addProjectModal").close()
-											}
-											className="btn bg-gray-700 border-none hover:bg-gray-600 text-white"
-										>
-											Cancel
-										</button>
-									</div>
-								</form>
-							</div>
-						</dialog>
-					</>
-				)}
-			</div>
-
-			{/* Project Cards */}
-			<div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-				{filteredProjects.map((proj) => {
-					const isEditing = editingProject === proj._id;
-
-					return (
-						<div
-							key={proj._id}
-							className="bg-[#111827] border border-[#374151] rounded-2xl shadow-lg p-6 transition-all hover:shadow-cyan-500/40"
-						>
-							{/* Header Row (Project Name + Admin Controls) */}
-							<div className="flex justify-between items-center mb-3">
-								{isEditing ? (
-									<input
-										type="text"
-										value={editedData.title}
-										onChange={(e) => handleChange(e, "title")}
-										className="input input-sm w-full bg-transparent border-[#374151] focus:border-[#06B6D4] text-cyan-400 font-bold"
-									/>
-								) : (
-									<Link
-										to={`/editor/${proj._id}/${proj.title.replace(
-											/\s+/g,
-											"-"
-										)}`}
-										className="relative text-2xl font-bold text-cyan-400 hover:text-cyan-300 transition-colors group"
-									>
-										{proj.title}
-										<span className="absolute left-0 -bottom-1 w-0 h-[2px] bg-cyan-400 transition-all duration-300 group-hover:w-full"></span>
-									</Link>
-								)}
-
-								{/* Admin Buttons */}
-								{user?.role === "admin" && (
-									<div className="flex gap-2">
-										{isEditing ? (
-											<button
-												onClick={() => handleSave(proj._id)}
-												className="p-2 rounded-full hover:bg-green-600/20"
-												title="Save Changes"
-											>
-												<CheckIcon size={20} className="text-green-400" />
-											</button>
-										) : (
-											<button
-												onClick={() => handleEditToggle(proj)}
-												className="p-2 rounded-full hover:bg-purple-600/20"
-												title="Edit Project"
-											>
-												<PencilIcon size={20} className="text-purple-400" />
-											</button>
-										)}
-										<button
-											onClick={() => handleDeleteClick(proj._id)}
-											className="p-2 rounded-full hover:bg-red-600/20"
-											title="Delete Project"
-										>
-											<TrashIcon size={20} className="text-red-400" />
-										</button>
-									</div>
-								)}
-
-								{/* Confirmation Dialog */}
-								{showConfirm && (
-									<div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 ">
-										<div className="bg-[#1f2937] p-8 rounded-2xl shadow-2xl border border-gray-600 max-w-sm w-full text-center">
-											<h2 className="text-xl font-semibold text-gray-100 mb-4">
-												Confirm Deletion
-											</h2>
-											<p className="text-gray-300 mb-6">
-												Are you sure you want to delete this project? This
-												action cannot be undone.
-											</p>
-											<div className="flex justify-center gap-4">
-												<button
-													onClick={confirmDelete}
-													className="bg-red-500 hover:bg-red-600 px-6 py-2 rounded-lg text-white font-semibold shadow-md"
-												>
-													Delete
-												</button>
-												<button
-													onClick={() => setShowConfirm(false)}
-													className="bg-gray-600 hover:bg-gray-500 px-6 py-2 rounded-lg text-white font-semibold shadow-md"
-												>
-													Cancel
-												</button>
-											</div>
-										</div>
-									</div>
-								)}
-							</div>
-
-							{/* Description */}
-							{isEditing ? (
-								<textarea
-									value={editedData.description}
-									onChange={(e) => handleChange(e, "description")}
-									className="textarea textarea-bordered w-full bg-transparent border-[#374151] focus:border-[#06B6D4] text-gray-300 mb-4"
-								/>
-							) : (
-								<p
-									onClick={() =>
-										user?.role === "student" &&
-										Navigate(`/editor/${proj.title.replace(/\s+/g, "-")}`)
-									}
-									className="text-gray-300 mb-6 leading-relaxed line-clamp-3 cursor-pointer"
-								>
-									{proj.description}
-								</p>
-							)}
-
-							{/* Difficulty */}
-							{isEditing ? (
-								<select
-									value={editedData.difficulty}
-									onChange={(e) => handleChange(e, "difficulty")}
-									className="select select-sm bg-transparent border-[#374151] text-gray-200 focus:border-[#9333EA]"
-								>
-									<option value="easy">Easy</option>
-									<option value="medium">Medium</option>
-									<option value="hard">Hard</option>
-								</select>
-							) : (
-								<span
-									className={`px-4 py-1 text-sm rounded-full font-semibold 
-                    ${
-											proj.difficulty === "easy"
-												? "bg-green-600/30 text-green-400"
-												: proj.difficulty === "medium"
-												? "bg-yellow-600/30 text-yellow-400"
-												: "bg-red-600/30 text-red-400"
-										}`}
-								>
-									{proj.difficulty}
-								</span>
-							)}
-						</div>
-					);
-				})}
-			</div>
-		</div>
-	);
- 
-	// Skeleton Loader Component
+	// ---------------------- SKELETON LOADER ----------------------
 	const SkeletonCard = () => (
 		<div className="bg-[#111827] border border-[#374151] rounded-2xl shadow-lg p-6 animate-pulse">
 			<div className="h-6 bg-gray-700 rounded w-3/4 mb-4"></div>
@@ -492,71 +174,277 @@ const Project = () => {
 			<div className="h-6 bg-gray-700 rounded w-20"></div>
 		</div>
 	);
- 
+
+	// ============================================================
+	// ======================= RETURN ==============================
+	// ============================================================
+
 	return (
 		<div className="p-8 py-24 min-h-screen bg-gradient-to-br from-[#0A0F1C] via-[#111827] to-[#1f2937] text-[#F9FAFB]">
-			{/* Difficulty Filter */}
-			<div className="flex justify-center gap-6 mb-10">
-				{["easy", "medium", "hard"].map((level) => (
+			{/* ---------------- FILTER + ADD BUTTON ---------------- */}
+			<div
+				className={`flex ${
+					user?.role === "admin" ? "justify-between" : "justify-center"
+				} mb-10`}
+			>
+				{/* Difficulty Filter */}
+				<div className="flex gap-6">
+					{["easy", "medium", "hard"].map((level) => (
+						<button
+							key={level}
+							onClick={() => setFilter(level)}
+							className={`px-6 py-2 rounded-full font-semibold transition-all shadow-md
+                ${
+									filter === level
+										? level === "easy"
+											? "bg-green-500 text-black"
+											: level === "medium"
+											? "bg-yellow-400 text-black"
+											: "bg-red-500 text-white"
+										: "bg-gray-800 text-gray-300 hover:bg-gray-600"
+								}`}
+						>
+							{level.charAt(0).toUpperCase() + level.slice(1)}
+						</button>
+					))}
+				</div>
+
+				{/* ADD PROJECT BUTTON */}
+				{user?.role === "admin" && (
 					<button
-						key={level}
-						onClick={() => setFilter(level)}
-						className={`px-6 py-2 rounded-full font-semibold transition-all shadow-md
-              ${
-								filter === level
-									? level === "easy"
-										? "bg-green-500 text-black"
-										: level === "medium"
-										? "bg-yellow-400 text-black"
-										: "bg-red-500 text-white"
-									: "bg-gray-800 text-gray-300 hover:bg-gray-600"
-							}`}
+						className="px-5 py-2 bg-[#06B6D4] hover:bg-[#9333EA] rounded-full font-semibold shadow-md"
+						onClick={() =>
+							document.getElementById("addProjectModal").showModal()
+						}
 					>
-						{level.charAt(0).toUpperCase() + level.slice(1)}
+						+ Add Project
 					</button>
-				))}
+				)}
 			</div>
- 
-			{/* Project Cards */}
+
+			{/* ---------------- ADD PROJECT MODAL ---------------- */}
+			{user?.role === "admin" && (
+				<dialog id="addProjectModal" className="modal">
+					<div className="modal-box bg-[#111827] text-white border border-[#374151]">
+						<h3 className="text-2xl font-bold text-[#06B6D4] mb-4">
+							Create Project
+						</h3>
+
+						<form method="dialog" onSubmit={handleCreateProject}>
+							<label className="font-semibold">Title</label>
+							<input
+								name="title"
+								className="input input-bordered w-full bg-transparent mb-4"
+								required
+							/>
+
+							<label className="font-semibold">Description</label>
+							<textarea
+								name="description"
+								className="textarea textarea-bordered w-full bg-transparent mb-4"
+								required
+							></textarea>
+
+							<label className="font-semibold">Tech Stack</label>
+							<input
+								name="techStack"
+								placeholder="React, Node.js"
+								className="input input-bordered w-full bg-transparent mb-4"
+								required
+							/>
+
+							<label className="font-semibold">Difficulty</label>
+							<select
+								name="difficulty"
+								className="select select-bordered w-full bg-transparent mb-4"
+							>
+								<option value="easy">Easy</option>
+								<option value="medium">Medium</option>
+								<option value="hard">Hard</option>
+							</select>
+
+							<label className="font-semibold">Template Repo (optional)</label>
+							<input
+								name="templateRepo"
+								className="input input-bordered w-full bg-transparent mb-4"
+							/>
+
+							{/* Task Builder */}
+							<TaskBuilder
+								tasks={newProjectTasks}
+								setTasks={setNewProjectTasks}
+								learningObjectives={newProjectObjectives}
+								setLearningObjectives={setNewProjectObjectives}
+							/>
+
+							<div className="modal-action">
+								<button className="btn bg-[#06B6D4]">Create</button>
+								<button
+									type="button"
+									onClick={() =>
+										document.getElementById("addProjectModal").close()
+									}
+									className="btn bg-gray-600"
+								>
+									Cancel
+								</button>
+							</div>
+						</form>
+					</div>
+				</dialog>
+			)}
+
+			{/* ---------------- PROJECT GRID ---------------- */}
 			<div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
 				{loading
 					? Array(6)
 							.fill(0)
 							.map((_, i) => <SkeletonCard key={i} />)
-					: filteredProjects.map((proj) => (
-							<div
-								key={proj._id}
-								className="bg-[#111827] border border-[#374151] rounded-2xl shadow-lg p-6 transition-all hover:shadow-cyan-500/40"
-							>
-								<Link
-									to={`/editor/${proj.title.replace(/\s+/g, "-")}`}
-									className="relative text-2xl font-bold mb-3 text-cyan-400 hover:text-cyan-300 transition-colors inline-block group"
+					: filteredProjects.map((proj) => {
+							const isEditing = editingProject === proj._id;
+
+							return (
+								<div
+									key={proj._id}
+									className="bg-[#111827] border border-[#374151] rounded-2xl shadow-lg p-6 hover:shadow-cyan-500/40"
 								>
-									{proj.title}
-									<span className="absolute left-0 -bottom-1 w-0 h-[2px] bg-cyan-400 transition-all duration-300 group-hover:w-full"></span>
-								</Link>
- 
-								<p className="text-gray-300 mb-6 leading-relaxed line-clamp-3">
-									{proj.description}
-								</p>
- 
-								<span
-									className={`px-4 py-1 text-sm rounded-full font-semibold 
-                    ${
-											proj.difficulty === "easy"
-												? "bg-green-600/30 text-green-400"
-												: proj.difficulty === "medium"
-												? "bg-yellow-600/30 text-yellow-400"
-												: "bg-red-600/30 text-red-400"
-										}`}
-								>
-									{proj.difficulty}
-								</span>
-							</div>
-					  ))}
+									{/* Title + Admin Controls */}
+									<div className="flex justify-between mb-3">
+										{isEditing ? (
+											<input
+												value={editedData.title}
+												onChange={(e) => handleChange(e, "title")}
+												className="input input-sm bg-transparent border-[#374151] text-cyan-400"
+											/>
+										) : (
+											<Link
+												to={`/editor/${proj._id}/${proj.title.replace(
+													/\s+/g,
+													"-"
+												)}`}
+												className="text-2xl font-bold text-cyan-400 hover:text-cyan-300"
+											>
+												{proj.title}
+											</Link>
+										)}
+
+										{user?.role === "admin" && (
+											<div className="flex gap-2">
+												{isEditing ? (
+													<button
+														onClick={() => handleSave(proj._id)}
+														className="p-2 rounded-full hover:bg-green-500/20"
+													>
+														<CheckIcon className="text-green-400" size={20} />
+													</button>
+												) : (
+													<button
+														onClick={() => handleEditToggle(proj)}
+														className="p-2 rounded-full hover:bg-purple-500/20"
+													>
+														<PencilIcon className="text-purple-400" size={20} />
+													</button>
+												)}
+
+												<button
+													onClick={() => handleDeleteClick(proj._id)}
+													className="p-2 rounded-full hover:bg-red-500/20"
+												>
+													<TrashIcon className="text-red-400" size={20} />
+												</button>
+											</div>
+										)}
+									</div>
+
+									{/* Delete Confirmation */}
+									{showConfirm && (
+										<div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+											<div className="bg-[#1f2937] p-8 rounded-xl border border-gray-600">
+												<h2 className="text-xl mb-4 font-semibold">
+													Confirm Delete
+												</h2>
+												<p className="text-gray-300 mb-4">
+													This action cannot be undone.
+												</p>
+												<div className="flex gap-4">
+													<button
+														onClick={confirmDelete}
+														className="px-6 py-2 bg-red-500 text-white rounded"
+													>
+														Delete
+													</button>
+													<button
+														onClick={() => setShowConfirm(false)}
+														className="px-6 py-2 bg-gray-600 text-white rounded"
+													>
+														Cancel
+													</button>
+												</div>
+											</div>
+										</div>
+									)}
+
+									{/* Description */}
+									{isEditing ? (
+										<textarea
+											value={editedData.description}
+											onChange={(e) => handleChange(e, "description")}
+											className="textarea textarea-bordered w-full bg-transparent border-[#374151] text-gray-300 mb-4"
+										/>
+									) : (
+										<p
+											className="text-gray-300 mb-6 cursor-pointer line-clamp-3"
+											onClick={() =>
+												user?.role === "student" &&
+												Navigate(`/editor/${proj.title.replace(/\s+/g, "-")}`)
+											}
+										>
+											{proj.description}
+										</p>
+									)}
+
+									{/* Difficulty */}
+									{isEditing ? (
+										<select
+											value={editedData.difficulty}
+											onChange={(e) => handleChange(e, "difficulty")}
+											className="select select-sm bg-transparent border-[#374151] text-white"
+										>
+											<option value="easy">Easy</option>
+											<option value="medium">Medium</option>
+											<option value="hard">Hard</option>
+										</select>
+									) : (
+										<span
+											className={`px-4 py-1 text-sm rounded-full font-semibold ${
+												proj.difficulty === "easy"
+													? "bg-green-600/30 text-green-400"
+													: proj.difficulty === "medium"
+													? "bg-yellow-600/30 text-yellow-400"
+													: "bg-red-600/30 text-red-400"
+											}`}
+										>
+											{proj.difficulty}
+										</span>
+									)}
+
+									{/* Task Builder During Editing */}
+									{isEditing && (
+										<div className="mt-4">
+											<TaskBuilder
+												tasks={editProjectTasks}
+												setTasks={setEditProjectTasks}
+												learningObjectives={editProjectObjectives}
+												setLearningObjectives={setEditProjectObjectives}
+											/>
+										</div>
+									)}
+								</div>
+							);
+					  })}
 			</div>
 		</div>
 	);
 };
- 
+
 export default Project;

@@ -1,68 +1,61 @@
 @plugin "daisyui";
-
-/* Global Reset */
+ 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  transition: background-color 0.1s ease;
 }
-
-/* Body Styling */
+ 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  background-color: #0a0a0f; /* <<< DARK BACKGROUND FIX */
-  color: white;
-
-  overflow-x: hidden;        /* Allow page to scroll normally */
+  overflow: hidden;
 }
-
+ 
 /* Scrollbar Styling - VS Code Style */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
-
+ 
 ::-webkit-scrollbar-track {
   background: #1e1e1e;
 }
-
+ 
 ::-webkit-scrollbar-thumb {
   background: #424242;
   border-radius: 0;
 }
-
+ 
 ::-webkit-scrollbar-thumb:hover {
   background: #4e4e4e;
 }
-
+ 
 ::-webkit-scrollbar-corner {
   background: #1e1e1e;
 }
-
+ 
 /* Ace Editor Customization */
 .ace_editor {
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
 }
-
+ 
 .ace_gutter {
   background: #272822 !important;
   color: #90908a !important;
 }
-
+ 
 .ace_gutter-active-line {
   background: #49483e !important;
 }
-
+ 
 .ace_cursor {
   color: #f8f8f0 !important;
 }
-
+ 
 /* Terminal Customization */
 .xterm {
   padding: 8px;
@@ -70,63 +63,51 @@ body {
   font-size: 13px;
   line-height: 1.4;
 }
-
+ 
 .xterm-viewport::-webkit-scrollbar {
   width: 10px;
 }
-
+ 
 .xterm-viewport::-webkit-scrollbar-track {
   background: #1e1e1e;
 }
-
+ 
 .xterm-viewport::-webkit-scrollbar-thumb {
   background: #424242;
 }
-
+ 
 .xterm .xterm-screen {
   background-color: #1e1e1e !important;
 }
-
+ 
 /* Selection */
 ::selection {
   background-color: #264f78;
 }
-
+ 
 /* Focus Visible */
 *:focus-visible {
   outline: 1px solid #007acc;
   outline-offset: -1px;
 }
-
+ 
 /* Button Reset */
 button {
   font-family: inherit;
 }
-
+ 
 /* Remove default button outline */
 button:focus {
   outline: none;
 }
-
+ 
+/* Smooth transitions */
+* {
+  transition: background-color 0.1s ease;
+}
+ 
 /* Prevent text selection on UI elements */
 button, .file-tree-item {
   user-select: none;
   -webkit-user-select: none;
-}
-/* Fix wave background band issue */
-.wave-wrapper {
-  position: relative;
-  height: 0 !important;
-  overflow: hidden;
-}
-
-.wave-wrapper svg {
-  position: absolute;
-  left: 0;
-  right: 0;
-  width: 100%;
-  display: block;
-}
-html, body, #root {
-  background-color: #0a0a0f;
 }
