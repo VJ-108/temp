@@ -63,7 +63,7 @@ const refreshAccessToken = async (req, res) => {
 			httpOnly: true,
 			secure: false, // (HTTP ONLY)
 			sameSite: "lax",
-			domain: "16.171.200.46.nip.io",
+			domain: "16.171.21.4.nip.io",
 			path: "/",
 		};
 
@@ -227,7 +227,7 @@ const login = async (req, res) => {
 			httpOnly: true,
 			secure: false, // (HTTP ONLY)
 			sameSite: "lax",
-			domain: "16.171.200.46.nip.io",
+			domain: "16.171.21.4.nip.io",
 			path: "/",
 		};
 
