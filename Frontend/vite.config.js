@@ -16,6 +16,6 @@ export default defineConfig({
 	// ⭐ Needed to allow nip.io domain in Vite preview
 	preview: {
 		host: true,
-		allowedHosts: ["16.170.212.41.nip.io"],
+		allowedHosts: ["13.53.53.132.nip.io"],
 	},
 });
